@@ -1,0 +1,23 @@
+/* Custom styles for Rad documentation */
+
+.md-typeset .admonition,
+.md-typeset details {
+    border-left-color: #7b1fa2;
+}
+
+.md-typeset .admonition-title,
+.md-typeset details > summary {
+    background-color: rgba(123, 31, 162, 0.1);
+}
+
+.md-typeset code {
+    border-radius: 0.2rem;
+}
+
+.md-typeset .tabbed-labels > label {
+    font-weight: 600;
+}
+
+.highlight .kc {
+    color: #7b1fa2;
+}

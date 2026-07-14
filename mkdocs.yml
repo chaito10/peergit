@@ -1,0 +1,96 @@
+site_name: Rad Documentation
+site_description: Documentation for Rad, a minimal Radicle-inspired distributed code collaboration tool
+site_url: https://heartwood.github.io/peergit
+
+repo_url: https://github.com/heartwood/peergit
+repo_name: heartwood/peergit
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Quick Start: quickstart.md
+      - Configuration: configuration.md
+  - Concepts:
+      - Identity: concepts/identity.md
+      - Repositories: concepts/repositories.md
+      - Peers: concepts/peers.md
+      - Patches: concepts/patches.md
+  - Commands:
+      - Overview: commands/index.md
+      - rad init: commands/init.md
+      - rad clone: commands/clone.md
+      - rad push: commands/push.md
+      - rad fetch: commands/fetch.md
+      - rad peer: commands/peer.md
+      - rad id: commands/id.md
+      - rad patch: commands/patch.md
+      - rad config: commands/config.md
+      - rad status: commands/status.md
+      - rad sync: commands/sync.md
+  - Architecture: architecture.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/heartwood/peergit
+  version:
+    provider: mike
+
+extra_css:
+  - stylesheets/extra.css
