@@ -1,0 +1,10 @@
+C:\Users\korde\Home\Github\heartwood\peergit\target\debug\deps\idna-7b6b9e3814d48342.d: C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\lib.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\deprecated.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\punycode.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\uts46.rs
+
+C:\Users\korde\Home\Github\heartwood\peergit\target\debug\deps\libidna-7b6b9e3814d48342.rlib: C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\lib.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\deprecated.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\punycode.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\uts46.rs
+
+C:\Users\korde\Home\Github\heartwood\peergit\target\debug\deps\libidna-7b6b9e3814d48342.rmeta: C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\lib.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\deprecated.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\punycode.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\uts46.rs
+
+C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\lib.rs:
+C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\deprecated.rs:
+C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\punycode.rs:
+C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\idna-1.1.0\src\uts46.rs:

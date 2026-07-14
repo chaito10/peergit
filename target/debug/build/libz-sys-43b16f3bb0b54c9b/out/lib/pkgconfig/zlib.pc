@@ -1,0 +1,14 @@
+prefix=C:\Users\korde\Home\Github\heartwood\peergit\target\debug\build\libz-sys-43b16f3bb0b54c9b\out
+exec_prefix=@exec_prefix@
+libdir=${prefix}/lib
+sharedlibdir=@sharedlibdir@
+includedir=${prefix}/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.3.2
+License: Zlib
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

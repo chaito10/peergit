@@ -1,0 +1,9 @@
+C:\Users\korde\Home\Github\heartwood\peergit\target\release\deps\zstd_sys-be4fa4967bd367c1.d: C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\lib.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zstd.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zdict.rs
+
+C:\Users\korde\Home\Github\heartwood\peergit\target\release\deps\libzstd_sys-be4fa4967bd367c1.rlib: C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\lib.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zstd.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zdict.rs
+
+C:\Users\korde\Home\Github\heartwood\peergit\target\release\deps\libzstd_sys-be4fa4967bd367c1.rmeta: C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\lib.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zstd.rs C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zdict.rs
+
+C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\lib.rs:
+C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zstd.rs:
+C:\Users\korde\scoop\persist\rustup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zstd-sys-2.0.16+zstd.1.5.7\src\bindings_zdict.rs:

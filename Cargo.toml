@@ -1,0 +1,71 @@
+[workspace]
+
+[package]
+name = "rad"
+version = "0.1.0"
+edition = "2021"
+description = "A minimal Radicle-inspired distributed code collaboration tool"
+
+[[bin]]
+name = "rad"
+path = "src/main.rs"
+
+[dependencies]
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Git
+git2 = "0.19"
+
+# Crypto
+ed25519-dalek = { version = "2", features = ["rand_core", "pkcs8"] }
+sha2 = "0.10"
+rand_core = { version = "0.6", features = ["getrandom"] }
+
+# Encoding
+hex = "0.4"
+base64 = "0.22"
+bs58 = "0.5"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ciborium = "0.2"
+
+# Networking
+tokio = { version = "1", features = ["full"] }
+quinn = "0.11"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+rcgen = "0.13"
+
+# Storage
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Compression
+zstd = "0.13"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Configuration
+directories = "5"
+
+# Time
+time = { version = "0.3", features = ["serde", "formatting"] }
+
+# UUID
+uuid = { version = "1", features = ["v4"] }
+
+# Error handling
+anyhow = "1"
+
+# Zeroize secret keys
+zeroize = { version = "1", features = ["derive"] }
+
+[profile.release]
+panic = "abort"
+lto = true
+strip = true
+opt-level = "z"
+codegen-units = 1
