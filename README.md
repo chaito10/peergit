@@ -125,9 +125,19 @@ Then open http://localhost:8000.
 
 ## License
 
-Licensed under either of:
+## License
 
-- Apache License, Version 2.0
-- MIT License
+PeerGit is distributed under the PeerGit Non-Commercial License v1.0.
 
-at your option.
+✅ Personal use
+✅ Education
+✅ Research
+✅ Open-source contributions
+✅ Academic use
+
+❌ Commercial use
+❌ SaaS offerings
+❌ Paid products
+❌ Enterprise deployment for commercial advantage
+
+For commercial licensing, please contact the project maintainer.
