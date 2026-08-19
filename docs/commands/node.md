@@ -60,5 +60,5 @@ Node Status:
 
 ## See Also
 
-- [Web Dashboard](../concepts/web-dashboard.md) -- Dashboard features
 - [Configuration](../configuration.md) -- Configure ports and addresses
+- [Architecture](../architecture.md) -- System design
