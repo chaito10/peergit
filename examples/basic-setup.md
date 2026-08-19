@@ -84,17 +84,36 @@ Shows:
 
 Set custom values:
 
-```bash
-# Change the web dashboard port
-peergit config set fossil.web_port 8080
+=== "Linux / macOS"
 
-# Change the listening address
-peergit config set p2p.listen '["/ip4/0.0.0.0/tcp/4001"]'
+    ```bash
+    # Change the web dashboard port
+    peergit config set fossil.web_port 8080
 
-# Change the node alias
-peergit config set node.alias "alice-node"
+    # Change the listening address
+    peergit config set p2p.listen '["/ip4/0.0.0.0/tcp/4001"]'
 
-# Use a custom home directory
-export PEERGIT_HOME=/home/alice/.peergit
-peergit init
-```
+    # Change the node alias
+    peergit config set node.alias "alice-node"
+
+    # Use a custom home directory
+    export PEERGIT_HOME=/home/alice/.peergit
+    peergit init
+    ```
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    # Change the web dashboard port
+    peergit config set fossil.web_port 8080
+
+    # Change the listening address
+    peergit config set p2p.listen '"/ip4/0.0.0.0/tcp/4001"'
+
+    # Change the node alias
+    peergit config set node.alias "alice-node"
+
+    # Use a custom home directory
+    $env:PEERGIT_HOME="C:\Users\alice\.peergit"
+    peergit init
+    ```
