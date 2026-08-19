@@ -1,21 +1,18 @@
 [workspace]
 
 [package]
-name = "rad"
+name = "peergit"
 version = "0.1.0"
 edition = "2021"
-description = "A minimal Radicle-inspired distributed code collaboration tool"
+description = "P2P transport, discovery, identity and collaboration layer for Fossil repositories"
 
 [[bin]]
-name = "rad"
+name = "peergit"
 path = "src/main.rs"
 
 [dependencies]
 # CLI
 clap = { version = "4", features = ["derive"] }
-
-# Git
-git2 = "0.19"
 
 # Crypto
 ed25519-dalek = { version = "2", features = ["rand_core", "pkcs8"] }
@@ -30,19 +27,27 @@ bs58 = "0.5"
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-ciborium = "0.2"
 
-# Networking
+# P2P networking
+libp2p = { version = "0.56", features = [
+    "tokio",
+    "tcp",
+    "noise",
+    "yamux",
+    "identify",
+    "kad",
+    "relay",
+    "ping",
+    "macros",
+    "request-response",
+] }
+futures = "0.3"
+
+# Async runtime
 tokio = { version = "1", features = ["full"] }
-quinn = "0.11"
-rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
-rcgen = "0.13"
 
-# Storage
+# Storage (application metadata only - Fossil owns repo DB)
 rusqlite = { version = "0.31", features = ["bundled"] }
-
-# Compression
-zstd = "0.13"
 
 # Logging
 tracing = "0.1"
@@ -54,8 +59,8 @@ directories = "5"
 # Time
 time = { version = "0.3", features = ["serde", "formatting"] }
 
-# UUID
-uuid = { version = "1", features = ["v4"] }
+# Async traits
+async-trait = "0.1"
 
 # Error handling
 anyhow = "1"

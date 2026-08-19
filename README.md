@@ -1,65 +1,138 @@
-# Rad
+# PeerGit
 
-**A minimal Radicle-inspired distributed code collaboration tool.**
+**P2P transport, discovery, identity and collaboration layer for Fossil repositories.**
 
-Rad is a single-binary, peer-to-peer code collaboration tool inspired by [Heartwood](https://github.com/radicle-dev/heartwood). It provides decentralized repository management, identity, patch workflows, and peer discovery without relying on centralized servers.
+PeerGit makes existing Fossil repositories directly discoverable and synchronizable over a decentralized peer-to-peer network. Fossil owns the repository state; PeerGit owns the networking.
 
 ---
 
 ## Features
 
-- **Ed25519 Identity** -- Generate cryptographic identities with DID:key identifiers
-- **Repository Management** -- Initialize, clone, push, and fetch repositories
-- **Peer Discovery** -- Add, list, and manage known peers
-- **Patch Workflow** -- Create, list, and merge patches through a review process
-- **SQLite Storage** -- Local metadata storage for identities, repos, peers, and patches
-- **CBOR Protocol** -- Compact binary serialization for network messages
-- **JSON Configuration** -- Radicle-compatible configuration with sensible defaults
+- **Fossil Transport Adapter** -- Bridges Fossil's `--transport-command` with libp2p for P2P sync
+- **Ed25519 Identity** -- Cryptographic identities with DID:key and libp2p PeerId
+- **Kademlia DHT** -- Decentralized peer discovery
+- **Request-Response Protocol** -- Length-prefixed Fossil xfer messages over TCP+Noise+Yamux
+- **Web Dashboard** -- Embedded HTML/JS dashboard for peer and repo management (no Node/npm)
+- **Single Binary** -- Zero runtime dependencies; no Node, Docker, or libgit2 required
+- **Application Metadata DB** -- SQLite for identity, peers, and published repositories
+
+---
+
+## Install
+
+### Scoop (Windows)
+
+```bash
+scoop bucket add chaito10 https://github.com/chaito10/scoop-bucket
+scoop install peergit
+```
+
+### From source
+
+```bash
+cargo install --path .
+```
 
 ---
 
 ## Quick Start
 
 ```bash
-# Install
-cargo install --path .
+# Initialize a node identity
+peergit init
 
-# Generate an identity
-rad id
+# Show identity
+peergit identity
 
-# Initialize a repository
-cd my-project
-rad init --name "my-project" --description "A cool project"
+# Add a peer
+peergit peer add <public-key> --alias alice --addresses /ip4/192.168.1.10/tcp/4001/p2p/<peer-id>
 
-# Check status
-rad status
+# Start the node (libp2p swarm + web dashboard on :3000)
+peergit node start
 
-# Create a patch
-rad patch create --title "Add new feature" --description "Implements X"
+# Publish a Fossil repository
+peergit repo publish --path ./my-project --name my-project
 
-# List patches
-rad patch list
+# Sync with a remote via Fossil's transport-command
+fossil sync --transport-command "peergit transport" /ip4/192.168.1.10/tcp/4001/p2p/<peer-id>
 ```
 
 ---
 
-## Commands
+## Usage
 
-| Command | Description |
-|---------|-------------|
-| `rad init` | Initialize a Radicle repository |
-| `rad clone` | Clone a repository from storage |
-| `rad push` | Push changes to a remote |
-| `rad fetch` | Fetch changes from a remote |
-| `rad peer add` | Add a known peer |
-| `rad peer list` | List known peers |
-| `rad id` | Show identity information |
-| `rad patch create` | Create a new patch |
-| `rad patch list` | List patches |
-| `rad patch merge` | Merge a patch |
-| `rad config show` | Show configuration |
-| `rad status` | Show repository status |
-| `rad sync` | Sync repositories |
+```
+peergit <COMMAND>
+
+Commands:
+  init              Initialize node identity and home directory
+  identity          Show node identity (DID, PeerId, public key)
+  peer              Manage known peers
+    add             Add a peer with public key and address
+    list            List known peers
+  node              Node management
+    start           Start the P2P node + web dashboard
+    status          Show node status
+  repo              Repository management
+    list            List published repositories
+    publish         Publish a local Fossil repository
+    discover        Discover a repository by RID
+    clone           Clone a published repository
+  sync              Sync a repository (P2P or Fossil)
+  config            Configuration management
+  fossil            Pass through to fossil CLI
+  transport         Transport adapter (called by fossil --transport-command)
+```
+
+---
+
+## Architecture
+
+PeerGit does **not** replace Fossil. It wraps it:
+
+```
+Fossil sync / push / pull
+  |
+  --transport-command
+  |
+  peergit transport
+  |
+  libp2p (TCP + Noise + Yamux)
+  |
+  Kademlia DHT (peer discovery)
+  |
+  Request-Response (/peergit/xfer/1.0)
+  |
+  Remote peer
+  |
+  fossil test-http (processes the request)
+```
+
+Fossil remains responsible for all repository synchronization. PeerGit is the network adapter.
+
+---
+
+## Web Dashboard
+
+When the node is running, open http://localhost:3000 for a dashboard showing:
+
+- Node status and identity
+- Known peers (add, list)
+- Published repositories
+- Sync operations
+
+Fossil's own web UI (wiki, tickets, timeline) runs separately via `fossil ui`.
+
+---
+
+## Configuration
+
+PeerGit stores configuration in:
+
+- **Linux/macOS**: `~/.local/share/peergit/config.json`
+- **Windows**: `%LOCALAPPDATA%/peergit/config.json`
+
+Override with `PEERGIT_HOME=/path/to/home`.
 
 ---
 
@@ -69,75 +142,19 @@ rad patch list
 # Debug build
 cargo build
 
-# Release build (optimized)
+# Release build (optimized, LTO, stripped)
 cargo build --release
 ```
 
-The release binary is located at `target/release/rad`.
+The release binary is located at `target/release/peergit`.
 
 ---
-
-## Configuration
-
-Rad stores configuration in:
-
-- **Linux/macOS**: `~/.local/share/radicle/config.json`
-- **Windows**: `%LOCALAPPDATA%/radicle/config.json`
-
-Override with `RAD_HOME=/path/to/home`.
-
-See [Configuration Reference](docs/configuration.md) for all options.
-
----
-
-## Architecture
-
-Rad flattens the multi-crate Heartwood architecture into a single executable with logical modules:
-
-```
-src/main.rs
-  mod crypto      -- Ed25519 keys, signing, verification
-  mod identity    -- DID, project metadata, identity documents
-  mod git         -- Git operations via libgit2
-  mod storage     -- SQLite database
-  mod protocol    -- CBOR network messages
-  mod peer        -- Peer management
-  mod config      -- JSON configuration
-  mod home        -- Directory management
-```
-
-See [Architecture Guide](docs/architecture.md) for details.
-
----
-
-## Documentation
-
-Full documentation is available in the `docs/` directory and can be served locally:
-
-```bash
-pip install mkdocs-material
-mkdocs serve
-```
-
-Then open http://localhost:8000.
-
----
-
-## License
 
 ## License
 
 PeerGit is distributed under the PeerGit Non-Commercial License v1.0.
 
-✅ Personal use
-✅ Education
-✅ Research
-✅ Open-source contributions
-✅ Academic use
-
-❌ Commercial use
-❌ SaaS offerings
-❌ Paid products
-❌ Enterprise deployment for commercial advantage
+- Personal use, education, research, open-source contributions, and academic use are permitted.
+- Commercial use, SaaS offerings, paid products, and enterprise deployment for commercial advantage are not permitted.
 
 For commercial licensing, please contact the project maintainer.
