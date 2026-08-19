@@ -576,6 +576,7 @@ fn cmd_config_get(key: String) -> Result<()> {
         "p2p.idle_timeout_secs" => config.p2p.idle_timeout_secs.to_string(),
         "fossil.fossil_path" => config.fossil.fossil_path.clone(),
         "fossil.http_port" => config.fossil.http_port.to_string(),
+        "fossil.web_port" => config.fossil.web_port.to_string(),
         _ => {
             return Err(crate::error::FossilP2pError::Config(format!(
                 "unknown key: {key}"
@@ -609,6 +610,11 @@ fn cmd_config_set(key: String, value: String) -> Result<()> {
         "fossil.fossil_path" => config.fossil.fossil_path = value,
         "fossil.http_port" => {
             config.fossil.http_port = value.parse().map_err(|e| {
+                crate::error::FossilP2pError::Config(format!("invalid u16: {e}"))
+            })?
+        }
+        "fossil.web_port" => {
+            config.fossil.web_port = value.parse().map_err(|e| {
                 crate::error::FossilP2pError::Config(format!("invalid u16: {e}"))
             })?
         }
