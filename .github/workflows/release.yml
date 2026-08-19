@@ -116,3 +116,54 @@ jobs:
           files: artifacts/*
           draft: false
           prerelease: false
+
+  scoop:
+    name: Update Scoop Manifest
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: x86_64-pc-windows-msvc
+          path: .
+
+      - name: Compute SHA256
+        id: hash
+        run: |
+          HASH=$(sha256sum peergit-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip | awk '{print $1}')
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Clone scoop bucket
+        uses: actions/checkout@v4
+        with:
+          repository: chaito10/scoop-bucket
+          token: ${{ secrets.SCOOP_TOKEN }}
+          path: scoop-bucket
+
+      - name: Update manifest
+        run: |
+          cat > scoop-bucket/bucket/peergit.json << EOF
+          {
+              "version": "${{ github.ref_name }}",
+              "description": "P2P transport, discovery, identity and collaboration layer for Fossil repositories",
+              "homepage": "https://github.com/chaito10/peergit",
+              "license": "SEE LICENSE IN LICENSE.md",
+              "architecture": {
+                  "64bit": {
+                      "url": "https://github.com/chaito10/peergit/releases/download/${{ github.ref_name }}/peergit-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip",
+                      "hash": "sha256:${{ steps.hash.outputs.hash }}"
+                  }
+              },
+              "bin": "peergit.exe"
+          }
+          EOF
+
+      - name: Commit and push
+        run: |
+          cd scoop-bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/peergit.json
+          git diff --cached --quiet || git commit -m "chore: update peergit to ${{ github.ref_name }}"
+          git push
