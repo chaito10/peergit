@@ -1,87 +1,47 @@
-# rad sync
+# peergit sync
 
-Synchronize repositories.
+Sync a repository over P2P or Fossil.
 
 ---
 
-## Synopsis
+## Usage
 
 ```bash
-rad sync
+peergit sync --path <REPO_PATH> --peer <PEER_ID>
 ```
+
+---
 
 ## Description
 
-`rad sync` synchronizes local repositories with the storage backend. This command updates all repository metadata and ensures consistency.
+Syncs a local Fossil repository with a remote peer via the libp2p transport layer.
 
-!!! info "Planned Feature"
-    Full synchronization with peers is planned but not yet implemented. Currently, this command provides a local sync operation.
-
----
-
-## Examples
-
-### Sync Repositories
+This is equivalent to running:
 
 ```bash
-rad sync
-```
-
-### Output
-
-```
-Sync complete!
-  Repositories: 3
-  Updated: 1
+fossil sync --transport-command "peergit transport" <PEER_ADDR>
 ```
 
 ---
 
-## How It Works
+## Options
 
-1. Scan all repositories in local storage
-2. Update repository metadata in the database
-3. Verify ref consistency
-4. Report any changes
+| Option | Description |
+|--------|-------------|
+| `--path <PATH>` | Path to the local Fossil repository |
+| `--peer <PEER_ID>` | PeerId or multiaddress of the remote peer |
 
 ---
 
-## Use Cases
-
-### After Manual Storage Changes
-
-If you modified the storage repository directly:
+## Example
 
 ```bash
-# Edit storage directly
-git -C ~/.local/share/radicle/storage/<rid> commit --allow-empty -m "Update"
-
-# Sync metadata
-rad sync
+peergit sync --path ./my-project.fossil --peer /ip4/192.168.1.20/tcp/4001/p2p/12D3KooW...
 ```
-
-### Before Backup
-
-Ensure all metadata is consistent before backup:
-
-```bash
-rad sync
-tar -czf radicle-backup.tar.gz ~/.local/share/radicle/
-```
-
----
-
-## Future Enhancements
-
-- [ ] Peer synchronization
-- [ ] Conflict detection and resolution
-- [ ] Incremental sync
-- [ ] Background sync process
 
 ---
 
 ## See Also
 
-- [rad push](push.md)
-- [rad fetch](fetch.md)
-- [Architecture](../architecture.md)
+- [Fossil Sync Concept](../concepts/fossil-sync.md) -- How Fossil sync works over libp2p
+- [Transport Command](transport.md) -- Low-level transport adapter

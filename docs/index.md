@@ -1,13 +1,8 @@
-# Rad
+# PeerGit
 
-**A minimal Radicle-inspired distributed code collaboration tool.**
+**P2P transport, discovery, identity and collaboration layer for Fossil repositories.**
 
----
-
-Rad is a single-binary, peer-to-peer code collaboration tool inspired by [Heartwood](https://github.com/radicle-dev/heartwood), the reference implementation of the [Radicle](https://radicle.xyz) protocol. It provides decentralized repository management, cryptographic identity, patch workflows, and peer discovery without relying on centralized servers.
-
-!!! info "Project Status"
-    Rad is a minimal reference implementation designed for learning and experimentation. It is not intended for production use.
+PeerGit makes existing Fossil repositories directly discoverable and synchronizable over a decentralized peer-to-peer network. Fossil owns the repository state; PeerGit owns the networking.
 
 ---
 
@@ -15,30 +10,36 @@ Rad is a single-binary, peer-to-peer code collaboration tool inspired by [Heartw
 
 | Feature | Description |
 |---------|-------------|
-| **Ed25519 Identity** | Generate cryptographic identities with DID:key identifiers |
-| **Repository Management** | Initialize, clone, push, and fetch repositories |
-| **Peer Discovery** | Add, list, and manage known peers |
-| **Patch Workflow** | Create, list, and merge patches through a review process |
-| **SQLite Storage** | Local metadata storage for identities, repos, peers, and patches |
-| **CBOR Protocol** | Compact binary serialization for network messages |
-| **JSON Configuration** | Radicle-compatible configuration with sensible defaults |
+| **Fossil Transport Adapter** | Bridges Fossil's `--transport-command` with libp2p for P2P sync |
+| **Ed25519 Identity** | Cryptographic identities with DID:key and libp2p PeerId |
+| **Kademlia DHT** | Decentralized peer discovery |
+| **Request-Response Protocol** | Length-prefixed Fossil xfer messages over TCP+Noise+Yamux |
+| **Web Dashboard** | Embedded HTML/JS dashboard for peer and repo management |
+| **Single Binary** | Zero runtime dependencies; no Node, Docker, or libgit2 required |
+| **SQLite Storage** | Application metadata for peers, repos, and identity |
 
 ---
 
 ## Architecture at a Glance
 
-Rad flattens the multi-crate Heartwood architecture into a single executable:
+PeerGit does **not** replace Fossil. It wraps it:
 
 ```
-src/main.rs
-  mod crypto      -- Ed25519 keys, signing, verification
-  mod identity    -- DID, project metadata, identity documents
-  mod git         -- Git operations via libgit2
-  mod storage     -- SQLite database
-  mod protocol    -- CBOR network messages
-  mod peer        -- Peer management
-  mod config      -- JSON configuration
-  mod home        -- Directory management
+Fossil sync / push / pull
+  |
+  --transport-command
+  |
+  peergit transport
+  |
+  libp2p (TCP + Noise + Yamux)
+  |
+  Kademlia DHT (peer discovery)
+  |
+  Request-Response (/peergit/xfer/1.0)
+  |
+  Remote peer
+  |
+  fossil test-http (processes the request)
 ```
 
 ---
@@ -46,21 +47,22 @@ src/main.rs
 ## Quick Example
 
 ```bash
-# Generate an identity
-rad id
+# Initialize a node identity
+peergit init
 
-# Initialize a repository
-cd my-project
-rad init --name "my-project" --description "A cool project"
+# Show identity
+peergit identity
 
-# Check status
-rad status
+# Add a peer
+peergit peer add <public-key> --alias alice \
+  --addresses /ip4/192.168.1.10/tcp/4001/p2p/<peer-id>
 
-# Create a patch
-rad patch create --title "Add new feature" --description "Implements X"
+# Start the node (libp2p swarm + web dashboard on :3000)
+peergit node start
 
-# List patches
-rad patch list
+# Sync a Fossil repo over libp2p
+fossil sync --transport-command "peergit transport" \
+  /ip4/192.168.1.10/tcp/4001/p2p/<peer-id>
 ```
 
 ---
@@ -75,9 +77,9 @@ For complete command reference, see the [Commands](commands/index.md) section.
 
 ## License
 
-Licensed under either of:
+PeerGit is distributed under the PeerGit Non-Commercial License v1.0.
 
-- Apache License, Version 2.0
-- MIT License
+- Personal use, education, research, open-source contributions, and academic use are permitted.
+- Commercial use, SaaS offerings, paid products, and enterprise deployment for commercial advantage are not permitted.
 
-at your option.
+For commercial licensing, please contact the project maintainer.

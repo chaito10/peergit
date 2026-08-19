@@ -1,33 +1,34 @@
 # Peers
 
-Rad enables decentralized collaboration by connecting peers who exchange repository information.
+PeerGit enables decentralized collaboration by connecting peers who exchange repository information over libp2p.
 
 ---
 
 ## Overview
 
-A peer in Rad is another user identified by their public key. Peers can:
+A peer in PeerGit is another node identified by their Ed25519 public key. Peers can:
 
-- Exchange repository announcements
-- Share inventory (list of repositories)
-- Sync branches and patches
+- Exchange Fossil xfer requests over libp2p
+- Discover each other via Kademlia DHT
+- Authenticate via Noise protocol handshake
 
 ---
 
 ## Peer Identity
 
-Each peer is identified by their Ed25519 public key:
+Each peer is identified by their:
 
-```
-z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSoJyPwwnknocNYPm7
-```
+- **Public Key**: Multibase-encoded Ed25519 key
+- **PeerId**: libp2p identifier derived from the public key
+- **DID**: `did:key` identifier derived from the public key
 
 ### Aliases
 
 Peers can have human-readable aliases:
 
 ```bash
-rad peer add z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSoJyPwwnknocNYPm7 --alias alice
+peergit peer add <PUBLIC_KEY> --alias alice \
+  --addresses /ip4/192.168.1.10/tcp/4001/p2p/<PEER_ID>
 ```
 
 ---
@@ -37,28 +38,23 @@ rad peer add z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSoJyPwwnknocNYPm7 --alias alice
 ### Add a Peer
 
 ```bash
-rad peer add <public_key> --alias <name>
+peergit peer add <PUBLIC_KEY> --alias <NAME> --addresses <MULTIADDR>
 ```
 
 ### List Peers
 
 ```bash
-rad peer list
+peergit peer list
 ```
 
 Output:
 
 ```
-Public Key                              Alias      Added
-----------------------------------------------------------------
-z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSo...  alice      2024-01-15
-z6Mkmqogy2qEM2ummccUthFEaaHvyYmY...  bob        2024-01-16
-```
-
-### Remove a Peer
-
-```bash
-rad peer remove <public_key>
+Known peers:
+  alice
+    PeerId:   12D3KooW...
+    Addresses: /ip4/192.168.1.10/tcp/4001/p2p/12D3KooW...
+    Added:     2026-08-19
 ```
 
 ---
@@ -68,10 +64,10 @@ rad peer remove <public_key>
 ### Schema
 
 ```sql
-CREATE TABLE peers (
+CREATE TABLE known_peers (
     public_key TEXT PRIMARY KEY,
-    alias TEXT,
-    node_id TEXT,
+    alias TEXT NOT NULL,
+    addresses TEXT NOT NULL,
     added_at INTEGER NOT NULL
 );
 ```
@@ -82,149 +78,75 @@ CREATE TABLE peers (
 |-------|------|-------------|
 | `public_key` | TEXT | Multibase-encoded public key |
 | `alias` | TEXT | Human-readable name |
-| `node_id` | TEXT | Node identifier (planned) |
+| `addresses` | TEXT | JSON array of multiaddresses |
 | `added_at` | INTEGER | Unix timestamp when added |
 
 ---
 
-## Seed Nodes
+## Peer Discovery
 
-Seed nodes are well-known peers that help with peer discovery:
+PeerGit uses two discovery mechanisms:
 
-### Default Seeds
+### Manual Discovery
 
-```json
-{
-  "preferred_seeds": [
-    "z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSoJyPwwnknocNYPm7@iris.radicle.network:8776",
-    "z6Mkmqogy2qEM2ummccUthFEaaHvyYmYBYh3dbe9W4ebScxo@rosa.radicle.network:8776"
-  ]
-}
-```
-
-### Adding Seeds
-
-Seeds are listed in the configuration file:
+Add peers explicitly with `peergit peer add`:
 
 ```bash
-rad config show
+peergit peer add <PUBKEY> --alias bob \
+  --addresses /ip4/192.168.1.20/tcp/4001/p2p/<BOB_PEER_ID>
 ```
 
-Edit the `preferred_seeds` array to add or remove seeds.
+### Kademlia DHT
+
+Once connected to a peer, PeerGit uses the Kademlia DHT to discover other peers in the network. The DHT stores peer records keyed by their PeerId.
+
+!!! info "DHT Bootstrap"
+    To participate in DHT discovery, your node must be connected to at least one peer. Add a known peer first, then start the node.
 
 ---
 
-## Protocol Messages
+## Connection Protocol
 
-Peers exchange messages to share repository state:
-
-### Announcement
-
-An announcement proves ownership of a repository:
-
-```json
-{
-  "type": "announcement",
-  "rid": "1ca78dfe...",
-  "refs": {
-    "refs/heads/main": "52680c8de2dca294fa2482e8ef725a4cc1bb362c"
-  },
-  "timestamp": 1705312800,
-  "signature": "...",
-  "public_key": "z6Mk..."
-}
-```
-
-### Inventory
-
-An inventory message lists all repositories a peer has:
-
-```json
-{
-  "type": "inventory",
-  "repositories": [
-    {
-      "rid": "1ca78dfe...",
-      "name": "my-project",
-      "refs": {
-        "refs/heads/main": "52680c8de2dca294fa2482e8ef725a4cc1bb362c"
-      }
-    }
-  ],
-  "timestamp": 1705312800,
-  "signature": "...",
-  "public_key": "z6Mk..."
-}
-```
-
----
-
-## Peer Exchange Flow
-
-!!! info "Planned Feature"
-    The following describes the planned peer exchange protocol. Currently, Rad only stores peers locally without active exchange.
-
-### 1. Connect to Seed
+When PeerGit connects to a peer:
 
 ```
-Connect to seed node via QUIC
-    ↓
-Exchange ping/pong
-    ↓
-Connected
-```
-
-### 2. Exchange Inventory
-
-```
-Send inventory message
-    ↓
-Receive peer's inventory
-    ↓
-Compare repositories
-    ↓
-Identify missing repos
-```
-
-### 3. Sync Repositories
-
-```
-Fetch missing repositories
-    ↓
-Update local refs
-    ↓
-Exchange patches
+1. TCP handshake
+    |
+2. Noise handshake (XX pattern)
+    |  - Authentication: Ed25519 signatures
+    |  - Key exchange: X25519 Diffie-Hellman
+    |  - Encryption: AES-256-GCM
+    |
+3. Yamux multiplexing negotiation
+    |
+4. Identify protocol exchange
+    |  - Protocol version
+    |  - Public key
+    |  - Listen addresses
+    |
+5. Kademlia DHT protocol negotiation
+    |
+6. Request-Response protocol negotiation
+    |  - /peergit/xfer/1.0
 ```
 
 ---
 
 ## Trust Model
 
-### Web of Trust (Planned)
-
-Rad plans to implement a web of trust where:
-
-- Peers can vouch for other peers
-- Trust is transitive through the graph
-- Reputation is computed from trust relationships
-
 ### Current Model
 
-Currently, trust is manual:
+Trust is manual:
 
-1. Add a peer with `rad peer add`
+1. Add a peer with `peergit peer add`
 2. Manually verify their public key out-of-band
-3. Trust announcements from added peers
+3. Trust requests from added peers
 
 !!! warning "Security"
     Without active verification, the current model relies on manual key verification. Always verify public keys through a trusted channel.
 
----
+### Future Enhancements
 
-## Future Enhancements
-
-- [ ] QUIC transport for peer connections
-- [ ] Automatic peer discovery via seeds
-- [ ] Encrypted protocol messages
-- [ ] Web of trust integration
+- [ ] Web of Trust integration
 - [ ] Peer reputation system
+- [ ] Automatic peer discovery via bootstrap nodes

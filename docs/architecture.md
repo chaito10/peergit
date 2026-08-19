@@ -1,30 +1,37 @@
 # Architecture
 
-This document describes the internal architecture of Rad and how it compares to the full Heartwood implementation.
+PeerGit is a P2P transport, discovery, identity and collaboration layer for Fossil repositories. Fossil owns all SCM state; PeerGit owns networking and discovery.
 
 ---
 
 ## Design Philosophy
 
-Rad flattens the multi-crate Heartwood architecture into a single executable with logical modules. This makes the codebase easier to understand and experiment with while preserving the essential functionality.
+PeerGit does **not** replace Fossil. It acts as a transport adapter, wrapping Fossil's existing `--transport-command` interface with libp2p networking. This means:
 
-!!! note "Reference Implementation"
-    Rad is not a production-ready implementation. It is designed for learning, experimentation, and as a starting point for building on the Radicle protocol.
+- Fossil handles all repository state, commits, branches, and synchronization logic
+- PeerGit handles peer discovery, identity, encrypted transport, and the web dashboard
+- No fork of Fossil is needed — PeerGit works with stock Fossil v2.25+
 
 ---
 
 ## Module Overview
 
 ```
-src/main.rs
-  mod crypto      -- Ed25519 keys, signing, verification
-  mod identity    -- DID, project metadata, identity documents
-  mod git         -- Git operations via libgit2
-  mod storage     -- SQLite database
-  mod protocol    -- CBOR network messages
-  mod peer        -- Peer management
-  mod config      -- JSON configuration
-  mod home        -- Directory management
+src/
+  main.rs            -- Binary entry point
+  lib.rs             -- Module declarations
+  crypto/            -- Ed25519 keys, multibase, DID:key, libp2p PeerId
+  identity/          -- DID, RepositoryIdentity, Visibility
+  config/            -- FossilP2pConfig (JSON)
+  home/              -- XDG directory management, PEERGIT_HOME
+  fossil/            -- Fossil CLI wrapper (subprocess calls)
+  storage/           -- SQLite schema (identity, repos, peers, advertised repos)
+  p2p/               -- libp2p behaviour, codec, transport
+  repository/        -- FossilRepoManager, SHA256-based RID
+  transport/         -- Fossil transport adapter (one-shot sender, receiver)
+  web/               -- Embedded HTTP dashboard (tokio TcpListener)
+  cli/               -- CLI commands (clap)
+  error.rs           -- FossilP2pError enum
 ```
 
 ---
@@ -36,193 +43,163 @@ src/main.rs
 Handles cryptographic operations:
 
 - **Key generation**: Ed25519 keypairs via `ed25519-dalek`
-- **Signing**: Message signing for announcements and patches
-- **Verification**: Signature verification for received messages
-- **Encoding**: Multibase encoding for public keys (Radicle-compatible)
-
-```rust
-// Example: Generating a new keypair
-let mut csprng = OsRng;
-let keypair = Keypair::generate(&mut csprng);
-
-// Encoding public key
-let public_key = multibase::encode(Base::Base32Z, &keypair.public.to_bytes());
-```
+- **Multibase encoding**: Base32Z encoding for public keys
+- **DID:key**: W3C Decentralized Identifiers derived from public keys
+- **libp2p PeerId**: Conversion from Ed25519 keys to libp2p PeerId
+- **Signing**: Message signing for identity verification
+- **Verification**: Signature verification for received data
 
 ### identity
 
 Manages decentralized identities:
 
-- **DID**: `did:key` identifiers derived from public keys
-- **Project metadata**: Repository name, description, revision, visibility
-- **Identity documents**: JSON-serialized identity with cryptographic proofs
-- **DID documents**: W3C-compliant DID documents for verification
-
-```rust
-// Identity document structure
-pub struct IdentityDocument {
-    pub id: Did,
-    #[serde(rename = "alsoKnownAs")]
-    pub also_known_as: Vec<Did>,
-    pub keys: Vec<DocumentKey>,
-    #[serde(rename = "service")]
-    pub services: Vec<Service>,
-}
-```
-
-### git
-
-Wraps `git2` (libgit2) for Git operations:
-
-- **Repository init**: Create new repositories
-- **Cloning**: Clone from storage or remotes
-- **Fetching**: Pull changes from remotes
-- **Pushing**: Push changes to remotes
-- **References**: Manage branches, tags, and heads
-- **Remotes**: Configure and manage remote connections
-
-### storage
-
-SQLite database for persistent state:
-
-- **Identities**: DID documents and public keys
-- **Repositories**: RID, name, description, visibility
-- **Peers**: Node IDs, aliases, connection status
-- **Refs**: Branch heads and commit hashes
-- **Patches**: Title, description, author, state, commits
-
-### protocol
-
-CBOR-serialized network messages:
-
-- **Ping**: Heartbeat messages
-- **Pong**: Ping responses
-- **Announcement**: Repository announcements with signatures
-- **Inventory**: Repository and ref announcements
-
-```rust
-// Protocol message types
-pub enum Message {
-    Ping { value: u16 },
-    Pong { value: u16 },
-    Announcement {
-        rid: RepositoryId,
-        refs: BTreeMap<String, Oid>,
-        timestamp: u64,
-        signature: Signature,
-        public_key: PublicKey,
-    },
-    Inventory {
-        repositories: Vec<InventoryItem>,
-        timestamp: u64,
-        signature: Signature,
-        public_key: PublicKey,
-    },
-}
-```
-
-### peer
-
-Manages peer connections and repository exchange:
-
-- **Announcement signing**: Sign repository state for broadcast
-- **Announcement verification**: Verify received announcements
-- **Inventory exchange**: Share repository lists with peers
-- **Ref exchange**: Share branch heads with peers
+- **Did**: `did:key` identifiers derived from public keys
+- **RepositoryIdentity**: Repository metadata (name, description, RID)
+- **Visibility**: Public or private repository visibility
 
 ### config
 
-JSON configuration with Radicle-compatible defaults:
+JSON configuration with sensible defaults:
 
-- **Public explorer**: URL template for web browsing
-- **Preferred seeds**: Default seed node addresses
-- **Node configuration**: Alias, listen address, network, log level
-- **CLI configuration**: Hints and display options
+- **Node**: Alias, listen addresses
+- **P2P**: Kademlia protocol name, bootstrap peers
+- **Fossil**: Fossil binary path, web dashboard port
 
 ### home
 
 XDG-style home directory management:
 
-- **Directory creation**: Config, keys, storage, node directories
-- **File paths**: Configuration, keys, database paths
-- **RAD_HOME override**: Environment variable support
+- **Directory creation**: Config, keys, storage directories
+- **File paths**: Configuration, database, key file paths
+- **PEERGIT_HOME**: Environment variable override
 
----
+### fossil
 
-## Comparison with Heartwood
+Wraps the Fossil CLI via subprocess calls:
 
-| Aspect | Heartwood | Rad |
-|--------|-----------|-----|
-| **Structure** | Multi-crate workspace | Single file |
-| **Identity** | SHA-1 OID (Git-compatible) | SHA-256 (simplified) |
-| **Protocol** | Wire protocol with encryption | CBOR messages (no encryption) |
-| **Network** | QUIC transport | QUIC transport (planned) |
-| **Storage** | SQLite + Git | SQLite + Git |
-| **Features** | Full protocol implementation | Minimal subset |
+- **Repository operations**: init, clone, sync, status, add, commit
+- **Web UI**: `fossil ui` for wiki, tickets, timeline
+- **Transport support**: `fossil test-http` for processing xfer requests
+- **Timeline**: `fossil timeline` for recent changes
+
+### storage
+
+SQLite database for persistent state:
+
+- **Identity**: Node DID, public key, key file path
+- **Repositories**: RID (SHA256), name, path, advertised status
+- **Known peers**: Public key, alias, addresses, added timestamp
+
+### p2p
+
+libp2p networking stack:
+
+- **behaviour.rs**: FossilP2pBehaviour combining Identify + Kademlia + Ping + RequestResponse
+- **codec.rs**: FossilCodec implementing `async_trait` request/response Codec with length-prefixed framing
+- **transport.rs**: TCP + Noise + Yamux transport builder
+
+### repository
+
+Fossil repository management:
+
+- **FossilRepoManager**: List repos, compute RIDs
+- **RID computation**: SHA256 hash of repo path + name
+
+### transport
+
+Fossil transport adapter (the core integration point):
+
+- **run_transport**: One-shot transport command called by Fossil
+- **run_receiver_request**: Process incoming xfer requests
+- **URL resolution**: Parse multiaddresses, resolve peer IDs
+- **Key management**: Load node keypair for signing
+
+### web
+
+Embedded web dashboard:
+
+- **mod.rs**: HTTP server using tokio TcpListener
+- **html.rs**: Embedded single-page dashboard (HTML/JS/CSS)
+- **api.rs**: JSON API handlers (status, peers, repos, sync)
 
 ---
 
 ## Data Flow
 
-### Repository Initialization
+### Sending a Sync Request (Alice)
 
 ```
-User runs `rad init`
-    ↓
-Generate Ed25519 keypair (if not exists)
-    ↓
-Create identity document with DID:key
-    ↓
-Initialize git repository in storage
-    ↓
-Create bare repository with identity ref
-    ↓
-Push working copy to storage remote
-    ↓
-Create namespace refs (heads/*, patches/*)
-    ↓
-Store metadata in SQLite
+fossil sync --transport-command "peergit transport" <BOB_ADDR>
+    |
+    Fossil writes HTTP xfer request to request_file
+    |
+    peergit transport <url> <request_file> <reply_file>
+    |
+    Read request from request_file
+    |
+    Resolve <url> to libp2p PeerId
+    |
+    Connect to Bob via TCP + Noise + Yamux
+    |
+    Send request over /peergit/xfer/1.0 protocol
+    |
+    Receive response
+    |
+    Write response to reply_file
+    |
+    Fossil reads reply_file and processes the response
 ```
 
-### Patch Creation
+### Receiving a Sync Request (Bob)
 
 ```
-User runs `rad patch create`
-    ↓
-Read current branch head
-    ↓
-Generate patch UUID
-    ↓
-Create patch entry in SQLite
-    ↓
-Create ref: refs/patches/<uuid>
-    ↓
-Announce to peers (planned)
-```
-
-### Peer Exchange (Planned)
-
-```
-Connect to seed nodes via QUIC
-    ↓
-Exchange inventory messages
-    ↓
-Update local peer list
-    ↓
-Fetch missing repositories
-    ↓
-Exchange ref announcements
-    ↓
-Update local refs
+peergit node start
+    |
+    libp2p swarm listens on configured port
+    |
+    Receives inbound /peergit/xfer/1.0 request from Alice
+    |
+    run_receiver_request() processes the request
+    |
+    Writes request to temp file
+    |
+    Runs: fossil test-http <temp_file> <reply_file>
+    |
+    Fossil processes the xfer against local repos
+    |
+    Reads reply from reply_file
+    |
+    Sends response back to Alice over libp2p
 ```
 
 ---
 
-## Future Work
+## Network Stack
 
-- [ ] QUIC transport for peer connections
-- [ ] Encrypted protocol messages
-- [ ] Background node process
-- [ ] Real-time peer discovery
-- [ ] Web of Trust integration
-- [ ] Collaborative objects (issues, discussions)
+```
+Application Layer:     Fossil (sync, push, pull)
+                            |
+Transport Adapter:     peergit transport (HTTP xfer <-> libp2p)
+                            |
+Protocol Layer:        Request-Response (/peergit/xfer/1.0)
+                            |
+Security Layer:        Noise (XX handshake, Curve25519, Ed25519 auth)
+                            |
+Transport Layer:       TCP + Yamux multiplexing
+                            |
+Discovery Layer:       Kademlia DHT + Identify protocol
+```
+
+---
+
+## Comparison with Alternatives
+
+| Aspect | PeerGit | Radicle Heartwood | Fossil built-in |
+|--------|---------|-------------------|-----------------|
+| **SCM** | Fossil | Git | Fossil |
+| **Transport** | libp2p (TCP+Noise+Yamux) | QUIC | HTTP/TCP |
+| **Discovery** | Kademlia DHT | Custom DHT | Centralized |
+| **Identity** | Ed25519 + DID:key | Ed25519 + SHA-1 OID | None |
+| **Encryption** | Noise (built-in) | QUIC (built-in) | Optional TLS |
+| **Dashboard** | Embedded web UI | None | Built-in |
+| **Binary** | Single binary | Multi-crate | N/A |

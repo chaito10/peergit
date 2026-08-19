@@ -1,22 +1,47 @@
 # Installation
 
-This guide covers how to install Rad from source.
+This guide covers how to install PeerGit.
 
 ---
 
 ## Prerequisites
 
-Before building Rad, ensure you have the following installed:
-
 | Dependency | Minimum Version | Purpose |
 |------------|-----------------|---------|
-| [Rust](https://rustup.rs/) | 1.75+ | Compiler toolchain |
-| [Git](https://git-scm.com/) | 2.0+ | Version control |
-| [CMake](https://cmake.org/) | 3.0+ | Building libgit2 |
-| [OpenSSL](https://www.openssl.org/) | 1.1+ | TLS support |
+| [Fossil](https://fossil-scm.org/) | 2.25+ | Repository management |
+| [Rust](https://rustup.rs/) | 1.75+ | Building from source (optional) |
 
-!!! note "Windows Users"
-    On Windows, ensure you have the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) or Visual Studio with the C++ workload installed.
+!!! note "Fossil"
+    PeerGit requires Fossil v2.25 or later for the `--transport-command` and `test-http` features. Install Fossil from [fossil-scm.org](https://fossil-scm.org/) or your package manager.
+
+---
+
+## Pre-built Binaries
+
+Download the latest release from [GitHub Releases](https://github.com/chaito10/peergit/releases):
+
+| Platform | Archive |
+|----------|---------|
+| Windows x64 | `peergit-v0.1.0-x86_64-pc-windows-msvc.zip` |
+| Linux x64 | `peergit-v0.1.0-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux ARM64 | `peergit-v0.1.0-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS x64 | `peergit-v0.1.0-x86_64-apple-darwin.tar.gz` |
+| macOS ARM64 (M1/M2) | `peergit-v0.1.0-aarch64-apple-darwin.tar.gz` |
+
+### Windows (Scoop)
+
+```bash
+scoop bucket add chaito10 https://github.com/chaito10/scoop-bucket
+scoop install peergit
+```
+
+### Linux / macOS
+
+```bash
+tar -xzf peergit-v0.1.0-*.tar.gz
+chmod +x peergit
+sudo mv peergit /usr/local/bin/
+```
 
 ---
 
@@ -25,8 +50,8 @@ Before building Rad, ensure you have the following installed:
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/example/rad.git
-cd rad
+git clone https://github.com/chaito10/peergit.git
+cd peergit
 ```
 
 ### Build
@@ -37,7 +62,7 @@ cd rad
     cargo build
     ```
 
-    The debug binary is located at `target/debug/rad`.
+    The debug binary is located at `target/debug/peergit`.
 
 === "Release"
 
@@ -45,10 +70,10 @@ cd rad
     cargo build --release
     ```
 
-    The release binary is located at `target/release/rad`.
+    The release binary is located at `target/release/peergit`.
 
 !!! tip "Release Build Optimizations"
-    The release build applies aggressive optimizations for small binary size:
+    The release build applies aggressive optimizations:
     
     - Link-Time Optimization (LTO) enabled
     - Symbols stripped
@@ -62,53 +87,48 @@ cd rad
 cargo install --path .
 ```
 
-This installs the `rad` binary to `~/.cargo/bin/`.
+This installs the `peergit` binary to `~/.cargo/bin/`.
 
 ---
 
 ## Verify Installation
 
 ```bash
-rad --version
+peergit --version
 ```
 
 Expected output:
 
 ```
-rad 0.1.0
+peergit 0.1.0
 ```
 
 ---
 
 ## Home Directory
 
-On first run, Rad creates a home directory to store configuration, keys, and data:
+On first run, PeerGit creates a home directory to store configuration, keys, and data:
 
 | Platform | Default Location |
 |----------|------------------|
-| Linux | `~/.local/share/radicle/` |
-| macOS | `~/Library/Application Support/radicle/` |
-| Windows | `%LOCALAPPDATA%/radicle/` |
+| Linux | `~/.local/share/peergit/` |
+| macOS | `~/Library/Application Support/peergit/` |
+| Windows | `%LOCALAPPDATA%/peergit/` |
 
-Override with the `RAD_HOME` environment variable:
+Override with the `PEERGIT_HOME` environment variable:
 
 ```bash
-export RAD_HOME=/path/to/custom/home
+export PEERGIT_HOME=/path/to/custom/home
 ```
 
 ### Directory Structure
 
 ```
-$RAD_HOME/
+$PEERGIT_HOME/
   config.json        # Configuration file
-  storage/           # Git repositories (bare)
-    <rid>/           # One directory per repository
+  peergit.db         # SQLite database (identity, peers, repos)
   keys/
-    radicle          # Ed25519 secret key (hex)
-    radicle.pub      # Ed25519 public key (hex)
-  node/              # Node runtime data
-  cobs/              # Collaborative objects cache
-  node.db            # SQLite database
+    node             # Ed25519 secret key
 ```
 
 ---
@@ -116,5 +136,5 @@ $RAD_HOME/
 ## Next Steps
 
 - [Quick Start](quickstart.md) -- Get up and running in minutes
-- [Configuration](configuration.md) -- Customize your Rad installation
+- [Configuration](configuration.md) -- Customize your PeerGit installation
 - [Commands Reference](commands/index.md) -- Complete command documentation

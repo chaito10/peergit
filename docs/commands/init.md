@@ -1,114 +1,51 @@
-# rad init
+# peergit init
 
-Initialize a new Rad repository.
+Initialize node identity and home directory.
 
 ---
 
-## Synopsis
+## Usage
 
 ```bash
-rad init [OPTIONS]
+peergit init
 ```
+
+---
 
 ## Description
 
-`rad init` creates a new Rad repository in the current directory. It:
+Creates a new Ed25519 keypair and initializes the PeerGit home directory with:
 
-1. Generates an Ed25519 keypair (if one doesn't exist)
-2. Creates an identity document with project metadata
-3. Computes the Repository ID (RID)
-4. Initializes a bare repository in storage
-5. Pushes the working copy to storage
-6. Creates namespace refs for patches
-7. Stores metadata in the local database
-
----
-
-## Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--name <NAME>` | Repository name | Directory name |
-| `--description <DESC>` | Repository description | Empty |
-| `--default-branch <BRANCH>` | Default branch name | `main` |
-| `--visibility <VIS>` | Repository visibility (`public` or `private`) | `private` |
-
----
-
-## Examples
-
-### Basic Initialization
-
-```bash
-cd my-project
-rad init --name "my-project" --description "A collaborative project"
-```
-
-Output:
-
-```
-Repository initialized successfully!
-  RID:      1ca78dfe5991a24f5c18466be9a3fe8c998f4b141c07d3c4caa0b0ecacc7f319
-  Identity: z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  DID:      did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  Branch:   main
-  Storage:  /home/user/.local/share/radicle/storage/1ca78...
-```
-
-### With Custom Branch
-
-```bash
-rad init --name "my-project" --default-branch develop
-```
-
-### Public Repository
-
-```bash
-rad init --name "my-project" --visibility public
-```
+- Node identity (DID:key, PeerId, public key)
+- Configuration file with defaults
+- SQLite database schema
 
 ---
 
 ## Output
 
-On success, the command outputs:
-
-- **RID**: The unique repository identifier
-- **Identity**: The public key in multibase format
-- **DID**: The decentralized identifier
-- **Branch**: The default branch name
-- **Storage**: Path to the bare repository in storage
-
----
-
-## Storage Structure
-
-After initialization, the following structure is created:
-
 ```
-$RAD_HOME/storage/<rid>/
-  HEAD
-  config
-  objects/
-  refs/
-    heads/
-      main
-    patches/
-  IDENTITY
+Node initialized at C:\Users\you\AppData\Local\peergit
+DID:        did:key:z6Mk...
+PeerId:     12D3KooW...
+Public Key: 6C4X...
 ```
 
 ---
 
-## Environment Variables
+## What It Creates
 
-| Variable | Description |
-|----------|-------------|
-| `RAD_HOME` | Override home directory |
+```
+$PEERGIT_HOME/
+  config.json        # Default configuration
+  peergit.db         # SQLite database
+  keys/
+    node             # Ed25519 secret key
+```
 
 ---
 
 ## See Also
 
-- [rad clone](clone.md)
-- [rad status](status.md)
-- [rad id](id.md)
+- [peergit identity](id.md) -- View identity after initialization
+- [Configuration](../configuration.md) -- Customize the configuration

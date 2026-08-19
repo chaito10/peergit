@@ -1,16 +1,12 @@
 # Contributing
 
-Thank you for your interest in contributing to Rad!
+Thank you for your interest in contributing to PeerGit!
 
 ---
 
 ## Overview
 
-Rad is a minimal reference implementation of the Radicle protocol. Contributions are welcome, but please keep in mind:
-
-- This is a learning tool, not a production system
-- Keep changes simple and focused
-- Follow existing code style
+PeerGit is a P2P transport layer for Fossil repositories. Contributions are welcome.
 
 ---
 
@@ -19,15 +15,14 @@ Rad is a minimal reference implementation of the Radicle protocol. Contributions
 ### Prerequisites
 
 - Rust 1.75+
+- Fossil 2.25+
 - Git
-- CMake
-- OpenSSL
 
 ### Clone and Build
 
 ```bash
-git clone https://github.com/example/rad.git
-cd rad
+git clone https://github.com/chaito10/peergit.git
+cd peergit
 cargo build
 ```
 
@@ -69,24 +64,28 @@ test: Add tests for Z
 
 ## Project Structure
 
-All code lives in `src/main.rs` as internal modules:
-
 ```
-src/main.rs
-  mod crypto      -- Ed25519 operations
-  mod identity    -- DID and identity documents
-  mod git         -- Git operations
-  mod storage     -- SQLite database
-  mod protocol    -- CBOR messages
-  mod peer        -- Peer management
-  mod config      -- Configuration
-  mod home        -- Directory management
+src/
+  main.rs            -- Binary entry point
+  lib.rs             -- Module declarations
+  crypto/            -- Ed25519 keys, multibase, DID:key
+  identity/          -- DID, RepositoryIdentity, Visibility
+  config/            -- FossilP2pConfig (JSON)
+  home/              -- XDG directory management
+  fossil/            -- Fossil CLI wrapper (subprocess)
+  storage/           -- SQLite schema
+  p2p/               -- libp2p behaviour, codec, transport
+  repository/        -- FossilRepoManager, RID computation
+  transport/         -- Fossil transport adapter
+  web/               -- Embedded HTTP dashboard
+  cli/               -- CLI commands (clap)
+  error.rs           -- FossilP2pError enum
 ```
 
 When adding features:
 
 1. Keep code in the appropriate module
-2. Add CLI commands in the main function
+2. Add CLI commands in `cli/commands.rs`
 3. Update documentation if needed
 
 ---
@@ -104,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_key_generation() {
-        let keypair = generate_keypair();
+        let keypair = Keypair::generate();
         assert_eq!(keypair.public.to_bytes().len(), 32);
     }
 }
@@ -116,14 +115,24 @@ Test CLI commands manually:
 
 ```bash
 # Test init flow
-rad id
-rad init --name "test" --description "Test project"
-rad status
+peergit init
+peergit identity
+peergit node status
 
-# Test patch flow
-rad patch create --title "Test patch" --description "Testing"
-rad patch list
+# Test peer flow
+peergit peer add <pubkey> --alias test --addresses /ip4/127.0.0.1/tcp/4001/p2p/<peer-id>
+peergit peer list
 ```
+
+---
+
+## Architecture Principles
+
+1. **Fossil owns SCM** -- PeerGit never replaces Fossil's repository management
+2. **libp2p owns networking** -- Use standard libp2p protocols, don't reinvent transport
+3. **Kademlia owns discovery** -- Use Kademlia DHT for peer discovery
+4. **Single binary** -- No runtime dependencies, no Node/npm/Docker
+5. **Rust-first** -- All code in Rust, no C dependencies beyond SQLite
 
 ---
 
@@ -142,7 +151,6 @@ Open http://localhost:8000 to preview.
 
 - Use clear, concise language
 - Include examples for all commands
-- Follow Red Hat documentation style
 - Use admonitions for important notes
 
 ---
@@ -155,8 +163,9 @@ Open http://localhost:8000 to preview.
 2. Create a feature branch
 3. Make your changes
 4. Run `cargo fmt` and `cargo clippy`
-5. Update documentation if needed
-6. Submit a pull request
+5. Run `cargo test`
+6. Update documentation if needed
+7. Submit a pull request
 
 ### PR Title Format
 
@@ -195,7 +204,8 @@ What you expected to happen.
 **Environment**
 - OS: [e.g., Windows 11]
 - Rust version: [e.g., 1.75]
-- Rad version: [e.g., 0.1.0]
+- PeerGit version: [e.g., 0.1.0]
+- Fossil version: [e.g., 2.28]
 ```
 
 ---

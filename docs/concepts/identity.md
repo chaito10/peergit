@@ -1,35 +1,35 @@
 # Identity
 
-Rad uses Ed25519 public-key cryptography to establish decentralized identities.
+PeerGit uses Ed25519 public-key cryptography to establish decentralized identities.
 
 ---
 
 ## Overview
 
-Every Rad user has a cryptographic identity consisting of:
+Every PeerGit node has a cryptographic identity consisting of:
 
 - **Ed25519 Keypair**: Public and private keys for signing and verification
-- **Public Key**: Encoded in multibase format (Radicle-compatible)
+- **Public Key**: Encoded in multibase format (Base32Z)
 - **DID**: `did:key` identifier derived from the public key
-- **Identity Document**: W3C-compliant document with keys and services
+- **PeerId**: libp2p peer identifier derived from the public key
 
 ---
 
 ## Public Key Format
 
-Rad public keys are 32-byte Ed25519 keys encoded in multibase Base32Z:
+PeerGit public keys are 32-byte Ed25519 keys encoded in multibase Base32Z:
 
 ```
-z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
+6C4X...
 ```
 
 !!! info "Multibase Encoding"
-    Multibase encodes the version byte and key material together, making the format self-describing. The `z` prefix indicates Base32Z encoding.
+    Multibase encodes the version byte and key material together, making the format self-describing. The prefix indicates the encoding scheme.
 
 ### Generation
 
 ```bash
-rad id
+peergit init
 ```
 
 This generates a new keypair (if one doesn't exist) and displays the public key.
@@ -39,13 +39,12 @@ This generates a new keypair (if one doesn't exist) and displays the public key.
 Keys are stored in:
 
 ```
-$RAD_HOME/keys/
-  radicle          # Secret key (hex)
-  radicle.pub      # Public key (hex)
+$PEERGIT_HOME/keys/
+  node          # Ed25519 secret key
 ```
 
 !!! warning "Secret Key Security"
-    The secret key is stored in plaintext for simplicity. In production, use a hardware security module (HSM) or encrypted storage.
+    The secret key is stored in plaintext for simplicity. In production, use encrypted storage.
 
 ---
 
@@ -56,7 +55,7 @@ DIDs provide a self-sovereign identity that doesn't depend on any central author
 ### DID Format
 
 ```
-did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
+did:key:z6Mk...
 ```
 
 | Component | Description |
@@ -65,113 +64,49 @@ did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
 | `key:` | DID method (key-based) |
 | `z6Mk...` | Multibase-encoded public key |
 
-### DID Document
-
-The DID document is a W3C-compliant JSON-LD document:
-
-```json
-{
-  "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/suites/ed25519-2020/v1"],
-  "id": "did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km",
-  "alsoKnownAs": ["did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km"],
-  "publicKey": [{
-    "id": "did:key:z6Mk...#z6Mk...",
-    "type": "Ed25519VerificationKey2018",
-    "controller": "did:key:z6Mk...",
-    "publicKeyMultibase": "z6Mk..."
-  }],
-  "service": [{
-    "id": "did:key:z6Mk...#radicle-node",
-    "type": "RadicleNode",
-    "serviceEndpoint": "https://seed.radicle.xyz:8776"
-  }]
-}
-```
-
 ### DID Resolution
 
-To resolve a DID to a DID document:
+To resolve a DID to a public key:
 
 1. Extract the multibase-encoded public key from the DID
 2. Decode to raw bytes
-3. Construct the DID document with keys and services
+3. Verify the Ed25519 public key
 
 ---
 
-## Identity Documents
+## libp2p PeerId
 
-Identity documents extend the DID document with Radicle-specific metadata.
+PeerGit also generates a libp2p PeerId from the same Ed25519 key:
 
-### Structure
+```
+12D3KooW...
+```
+
+The PeerId is used by libp2p for:
+
+- Peer identification in the DHT
+- Connection authentication
+- Kademlia key routing
+
+### Converting Between Formats
 
 ```rust
-pub struct IdentityDocument {
-    pub id: Did,
-    #[serde(rename = "alsoKnownAs")]
-    pub also_known_as: Vec<Did>,
-    pub keys: Vec<DocumentKey>,
-    #[serde(rename = "service")]
-    pub services: Vec<Service>,
-}
-```
+// Public key -> PeerId
+let peer_id = PeerId::from(keypair.public());
 
-### Storage
-
-Identity documents are stored in:
-
-```
-$RAD_HOME/storage/<rid>/IDENTITY
-```
-
-The file contains the JSON-serialized identity document.
-
----
-
-## Project Identity
-
-When you initialize a repository with `rad init`, Rad creates a project identity:
-
-### Project Metadata
-
-```json
-{
-  "name": "my-project",
-  "description": "A collaborative project",
-  "defaultBranch": "main",
-  "visibility": "private"
-}
-```
-
-### Identity Document (Project)
-
-The project identity document includes:
-
-```json
-{
-  "@context": ["https://www.w3.org/ns/did/v1", "..."],
-  "id": "did:key:z6Mk...",
-  "alsoKnownAs": ["did:key:z6Mk..."],
-  "keys": [{
-    "key": "z6Mk...",
-    "roles": ["keyMaintenance", "repoManagement"]
-  }],
-  "services": [{
-    "id": "did:key:z6Mk...#radicle-node",
-    "type": "RadicleNode",
-    "serviceEndpoint": "https://seed.radicle.xyz:8776"
-  }]
-}
+// PeerId -> Public key
+let public_key = peer_id.extract_publickey()?;
 ```
 
 ---
 
 ## Signing and Verification
 
-Rad uses Ed25519 signatures for:
+PeerGit uses Ed25519 signatures for:
 
-- **Announcements**: Prove repository ownership
-- **Patches**: Prove patch authorship
-- **Inventory**: Prove peer identity
+- **Identity verification**: Prove ownership of a peer identity
+- **Repository ownership**: Sign published repository metadata
+- **Transport security**: Authenticate peers during Noise handshake
 
 ### Signing
 
@@ -179,7 +114,7 @@ Rad uses Ed25519 signatures for:
 use ed25519_dalek::{Keypair, Signer};
 
 let keypair = Keypair::from_bytes(&secret_key)?;
-let message = b"repository announcement";
+let message = b"repository metadata";
 let signature = keypair.sign(message);
 ```
 
@@ -189,7 +124,7 @@ let signature = keypair.sign(message);
 use ed25519_dalek::{PublicKey, Verifier};
 
 let public_key = PublicKey::from_bytes(&pub_bytes)?;
-let message = b"repository announcement";
+let message = b"repository metadata";
 public_key.verify(message, &signature)?;
 ```
 
@@ -198,9 +133,9 @@ public_key.verify(message, &signature)?;
 ## Security Considerations
 
 !!! warning "Production Use"
-    Rad is a minimal reference implementation. For production use:
+    For production use:
 
     - Store secret keys in encrypted storage or HSMs
-    - Use transport encryption for network communication
-    - Implement proper key rotation mechanisms
-    - Verify signatures before trusting received data
+    - Transport encryption is handled by Noise (built into libp2p)
+    - Verify public keys through a trusted channel out-of-band
+    - Consider key rotation mechanisms

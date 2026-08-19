@@ -1,9 +1,9 @@
-site_name: Rad Documentation
-site_description: Documentation for Rad, a minimal Radicle-inspired distributed code collaboration tool
-site_url: https://heartwood.github.io/peergit
+site_name: PeerGit Documentation
+site_description: Documentation for PeerGit, a P2P transport, discovery, identity and collaboration layer for Fossil repositories
+site_url: https://chaito10.github.io/peergit
 
-repo_url: https://github.com/heartwood/peergit
-repo_name: heartwood/peergit
+repo_url: https://github.com/chaito10/peergit
+repo_name: chaito10/peergit
 
 theme:
   name: material
@@ -45,21 +45,21 @@ nav:
       - Configuration: configuration.md
   - Concepts:
       - Identity: concepts/identity.md
-      - Repositories: concepts/repositories.md
       - Peers: concepts/peers.md
+      - Repositories: concepts/repositories.md
+      - Fossil Sync: concepts/fossil-sync.md
       - Patches: concepts/patches.md
   - Commands:
       - Overview: commands/index.md
-      - rad init: commands/init.md
-      - rad clone: commands/clone.md
-      - rad push: commands/push.md
-      - rad fetch: commands/fetch.md
-      - rad peer: commands/peer.md
-      - rad id: commands/id.md
-      - rad patch: commands/patch.md
-      - rad config: commands/config.md
-      - rad status: commands/status.md
-      - rad sync: commands/sync.md
+      - peergit init: commands/init.md
+      - peergit identity: commands/id.md
+      - peergit peer: commands/peer.md
+      - peergit node: commands/node.md
+      - peergit repo: commands/repo.md
+      - peergit sync: commands/sync.md
+      - peergit config: commands/config.md
+      - peergit transport: commands/transport.md
+      - peergit fossil: commands/fossil.md
   - Architecture: architecture.md
   - Contributing: contributing.md
 
@@ -88,7 +88,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/heartwood/peergit
+      link: https://github.com/chaito10/peergit
   version:
     provider: mike
 

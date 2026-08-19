@@ -1,97 +1,41 @@
-# rad id
+# peergit identity
 
-Show identity information.
+Show node identity (DID, PeerId, public key).
 
 ---
 
-## Synopsis
+## Usage
 
 ```bash
-rad id
+peergit identity
 ```
+
+---
 
 ## Description
 
-`rad id` displays the current Rad identity, including the public key and DID. If no identity exists, it generates a new Ed25519 keypair.
+Displays the current node's cryptographic identity:
+
+- **DID**: Decentralized Identifier (`did:key:z6Mk...`)
+- **PeerId**: libp2p peer identifier (`12D3KooW...`)
+- **Public Key**: Multibase-encoded Ed25519 public key
+- **Key Path**: Path to the secret key file
 
 ---
 
-## Examples
-
-### Show Identity
-
-```bash
-rad id
-```
-
-### Output
+## Output
 
 ```
-Identity Information:
-  Public Key: z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  DID:        did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  Key Path:   /home/user/.local/share/radicle/keys/radicle
-```
-
-### Generate New Identity
-
-If no identity exists, `rad id` generates one:
-
-```
-Generated new identity!
-  Public Key: z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  DID:        did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  Key Path:   /home/user/.local/share/radicle/keys/radicle
-```
-
----
-
-## Output Fields
-
-| Field | Description |
-|-------|-------------|
-| `Public Key` | Multibase-encoded Ed25519 public key |
-| `DID` | Decentralized Identifier (did:key) |
-| `Key Path` | Path to the secret key file |
-
----
-
-## Key Storage
-
-Keys are stored in:
-
-```
-$RAD_HOME/keys/
-  radicle          # Secret key (hex)
-  radicle.pub      # Public key (hex)
-```
-
-!!! warning "Security"
-    The secret key is stored in plaintext for simplicity. In production, use encrypted storage or a hardware security module.
-
----
-
-## Identity Format
-
-### Public Key
-
-The public key is encoded in multibase Base32Z:
-
-```
-z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-```
-
-### DID
-
-The DID uses the `did:key` method:
-
-```
-did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
+Node Identity:
+  DID:        did:key:z6Mk...
+  PeerId:     12D3KooW...
+  Public Key: 6C4X...
+  Key Path:   C:\Users\you\AppData\Local\peergit\keys\node
 ```
 
 ---
 
 ## See Also
 
-- [Identity Concepts](../concepts/identity.md)
-- [rad init](init.md)
+- [peergit init](init.md) -- Initialize a new identity
+- [Identity Concept](../concepts/identity.md) -- Understanding identities

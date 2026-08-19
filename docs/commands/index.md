@@ -1,17 +1,17 @@
 # Commands Reference
 
-This section documents all available Rad commands.
+This section documents all available PeerGit commands.
 
 ---
 
 ## Overview
 
-Rad provides a git-like CLI interface for distributed code collaboration.
+PeerGit provides a git-like CLI interface for P2P Fossil collaboration.
 
 ### Usage Pattern
 
 ```bash
-rad <command> [subcommand] [options]
+peergit <command> [subcommand] [options]
 ```
 
 ### Global Options
@@ -29,69 +29,58 @@ rad <command> [subcommand] [options]
 
 | Command | Description |
 |---------|-------------|
-| `rad id` | Show identity information |
-
-### Repository Management
-
-| Command | Description |
-|---------|-------------|
-| `rad init` | Initialize a Rad repository |
-| `rad clone` | Clone a repository |
-| `rad push` | Push changes to storage |
-| `rad fetch` | Fetch changes from storage |
-| `rad status` | Show repository status |
+| `peergit init` | Initialize node identity and home directory |
+| `peergit identity` | Show node identity (DID, PeerId, public key) |
 
 ### Peer Management
 
 | Command | Description |
 |---------|-------------|
-| `rad peer add` | Add a known peer |
-| `rad peer list` | List known peers |
+| `peergit peer add` | Add a peer with public key and address |
+| `peergit peer list` | List known peers |
 
-### Patches
-
-| Command | Description |
-|---------|-------------|
-| `rad patch create` | Create a new patch |
-| `rad patch list` | List patches |
-| `rad patch merge` | Merge a patch |
-
-### Configuration
+### Node Management
 
 | Command | Description |
 |---------|-------------|
-| `rad config show` | Show configuration |
-| `rad config init` | Initialize configuration |
+| `peergit node start` | Start the P2P node + web dashboard |
+| `peergit node status` | Show node status |
+
+### Repository Management
+
+| Command | Description |
+|---------|-------------|
+| `peergit repo list` | List published repositories |
+| `peergit repo publish` | Publish a local Fossil repository |
+| `peergit repo discover` | Discover a repository by RID |
+| `peergit repo clone` | Clone a published repository |
 
 ### Synchronization
 
 | Command | Description |
 |---------|-------------|
-| `rad sync` | Sync repositories |
+| `peergit sync` | Sync a repository (P2P or Fossil) |
 
----
+### Configuration
 
-## Examples
+| Command | Description |
+|---------|-------------|
+| `peergit config show` | Show current configuration |
+| `peergit config init` | Initialize default config |
+| `peergit config get` | Get a config value |
+| `peergit config set` | Set a config value |
 
-```bash
-# Generate identity
-rad id
+### Fossil Passthrough
 
-# Initialize repository
-rad init --name "my-project" --description "A cool project"
+| Command | Description |
+|---------|-------------|
+| `peergit fossil` | Pass through to fossil CLI |
 
-# Check status
-rad status
+### Transport
 
-# Create patch
-rad patch create --title "Add feature" --description "Implements X"
-
-# Add peer
-rad peer add z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSoJyPwwnknocNYPm7 --alias alice
-
-# Show config
-rad config show
-```
+| Command | Description |
+|---------|-------------|
+| `peergit transport` | Transport adapter (called by fossil `--transport-command`) |
 
 ---
 
@@ -102,10 +91,9 @@ rad config show
 | 0 | Success |
 | 1 | General error |
 | 2 | Invalid arguments |
-| 3 | Git operation failed |
+| 3 | Fossil operation failed |
 | 4 | Database error |
 | 5 | Identity not found |
-| 6 | Repository not initialized |
 
 ---
 
@@ -113,5 +101,5 @@ rad config show
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `RAD_HOME` | Override home directory | Platform-specific |
+| `PEERGIT_HOME` | Override home directory | Platform-specific |
 | `RUST_LOG` | Log level filter | `warn` |

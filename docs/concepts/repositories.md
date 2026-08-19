@@ -1,246 +1,143 @@
 # Repositories
 
-Rad manages Git repositories with additional metadata for decentralized collaboration.
+PeerGit manages Fossil repositories with additional metadata for decentralized collaboration.
 
 ---
 
 ## Overview
 
-A Rad repository consists of:
+A PeerGit repository consists of:
 
-- **Git Repository**: Standard Git repository with branches and commits
-- **Identity**: Ed25519 keypair and DID document
-- **Metadata**: Name, description, default branch, visibility
-- **Namespace**: Refs for patches and other collaborative objects
+- **Fossil Repository**: Standard Fossil repository with all SCM state
+- **RID**: SHA256-based Repository ID for P2P identification
+- **Metadata**: Name, path, advertised status
+- **Peer Information**: Who published this repository
 
 ---
 
 ## Repository ID (RID)
 
-Each repository has a unique identifier derived from the identity document:
+Each published repository has a unique identifier derived from the repository path and name:
 
 ```
-1ca78dfe5991a24f5c18466be9a3fe8c998f4b141c07d3c4caa0b0ecacc7f319
+a1b2c3d4e5f6...
 ```
 
 ### Generation
 
-The RID is a SHA-256 hash of the serialized identity document:
+The RID is a SHA-256 hash of the repository path and name:
 
 ```rust
-let identity_json = serde_json::to_string(&identity_document)?;
-let rid = sha256(identity_json.as_bytes());
+let rid = sha256(format!("{}:{}", path, name));
 ```
 
 ### Format
 
 The RID is a 64-character hexadecimal string (32 bytes).
 
-!!! info "Comparison with Heartwood"
-    Heartwood uses SHA-1 OID (Git-compatible) for RIDs. Rad uses SHA-256 for simplicity, but this makes RIDs incompatible with the full Radicle network.
-
 ---
 
-## Repository Storage
-
-Repositories are stored in two locations:
-
-### Bare Repository (Storage)
-
-```
-$RAD_HOME/storage/<rid>/
-  HEAD
-  config
-  objects/
-  refs/
-    heads/
-    patches/
-  IDENTITY
-```
-
-### Working Copy (Pushed)
-
-When you run `rad init` or `rad push`, Rad creates a bare repository in storage and pushes the working copy:
-
-```bash
-# Storage location
-$RAD_HOME/storage/<rid>
-
-# Working copy (standard git)
-/path/to/your/project
-```
-
----
-
-## Repository Initialization
+## Publishing a Repository
 
 ### Command
 
 ```bash
-rad init --name "my-project" --description "A collaborative project"
+peergit repo publish --path ./my-project.fossil --name my-project
 ```
 
 ### Process
 
-1. Generate or load existing keypair
-2. Create identity document with project metadata
-3. Compute RID (SHA-256 of identity document)
-4. Create bare repository in storage
-5. Push working copy to storage remote
-6. Create namespace refs (heads/*, patches/*)
-7. Store metadata in SQLite
+1. Verify the Fossil repository exists
+2. Compute RID from path + name
+3. Store in SQLite database
+4. Mark as advertised for P2P discovery
 
 ### Output
 
 ```
-Repository initialized successfully!
-  RID:      1ca78dfe5991a24f5c18466be9a3fe8c998f4b141c07d3c4caa0b0ecacc7f319
-  Identity: z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  DID:      did:key:z6MkmSfm58EqKuNBqAFJcnVqETiCSW5F3t4A5HarBw6pF9km
-  Branch:   main
-  Storage:  /home/user/.local/share/radicle/storage/1ca78...
+Repository published:
+  Name: my-project
+  RID:  a1b2c3d4e5f6...
+  Path: /path/to/my-project.fossil
 ```
 
 ---
 
-## Repository Cloning
+## Listing Repositories
 
 ### Command
 
 ```bash
-rad clone <rid>
+peergit repo list
 ```
 
-### Process
+### Output
 
-1. Look up repository in local storage
-2. Create working directory
-3. Initialize git repository
-4. Fetch all branches from storage
+```
+Published repositories:
+  my-project
+    RID:    a1b2c3d4e5f6...
+    Path:   /path/to/my-project.fossil
+    Added:  2026-08-19
+```
 
 ---
 
-## Push and Fetch
+## Repository Database
 
-### Push
-
-```bash
-rad push
-```
-
-Pushes changes from the working copy to storage:
-
-1. Detect current branch
-2. Push commits to storage remote
-
-### Fetch
-
-```bash
-rad fetch
-```
-
-Fetches changes from storage to working copy:
-
-1. Fetch all refs from storage remote
-2. Update local branches
-
----
-
-## Repository Metadata
-
-### Database Schema
+### Schema
 
 ```sql
 CREATE TABLE repositories (
-    id TEXT PRIMARY KEY,        -- RID
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    description TEXT,
-    default_branch TEXT,
-    identity TEXT NOT NULL,     -- JSON identity document
-    created_at INTEGER NOT NULL
+    path TEXT NOT NULL
+);
+
+CREATE TABLE advertised_repos (
+    rid TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    added_at INTEGER NOT NULL
 );
 ```
 
-### Access
+---
 
-```bash
-# View repository info
-rad status
+## Fossil Integration
 
-# List all repositories
-rad status --all
-```
+PeerGit does not manage Fossil repositories directly. Fossil handles:
+
+- Repository initialization (`fossil init`)
+- Commit history and branching
+- Merge conflict resolution
+- Wiki, tickets, and other SCM features
+
+PeerGit adds:
+
+- P2P transport via `--transport-command`
+- Peer discovery and identity
+- Encrypted transport via Noise
+- Web dashboard for monitoring
 
 ---
 
-## Namespace Refs
+## Unpublishing a Repository
 
-Repositories use namespace refs for collaborative objects:
-
-### Structure
-
-```
-refs/
-  heads/
-    main
-    feature/*
-  patches/
-    <uuid>/
-      meta        -- Patch metadata
-      <version>   -- Patch commits
-```
-
-### Patch Refs
-
-Patches are stored as refs:
-
-```
-refs/patches/<uuid>/meta
-refs/patches/<uuid>/v0
-refs/patches/<uuid>/v1
-```
-
-See [Patches](patches.md) for details.
-
----
-
-## Remote Configuration
-
-### Storage Remote
-
-When you initialize a repository, Rad adds a `rad` remote pointing to storage:
+To stop sharing a repository:
 
 ```bash
-git remote -v
-# rad  /home/user/.local/share/radicle/storage/<rid> (fetch)
-# rad  /home/user/.local/share/radicle/storage/<rid> (push)
-```
-
-### Adding Remotes
-
-```bash
-git remote add peer1 /path/to/peer/storage/<rid>
+peergit repo unpublish --rid <RID>
 ```
 
 ---
 
 ## Visibility
 
-Repositories can have different visibility levels:
-
 | Visibility | Description |
 |------------|-------------|
-| `public` | Visible to all peers |
-| `private` | Only visible to owner and collaborators |
+| `public` | Discoverable by all peers |
+| `private` | Only shared with explicitly added peers |
 
 !!! note "Current Implementation"
-    Visibility is stored in metadata but not enforced in the current implementation.
-
----
-
-## Future Enhancements
-
-- [ ] Remote storage synchronization
-- [ ] Repository cloning from peers
-- [ ] Access control lists
-- [ ] Repository archiving
+    Visibility is stored in metadata. Enforcement is planned for future versions.

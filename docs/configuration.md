@@ -1,6 +1,6 @@
 # Configuration
 
-Rad uses a JSON configuration file stored in your home directory.
+PeerGit uses a JSON configuration file stored in your home directory.
 
 ---
 
@@ -8,14 +8,14 @@ Rad uses a JSON configuration file stored in your home directory.
 
 | Platform | Path |
 |----------|------|
-| Linux | `~/.local/share/radicle/config.json` |
-| macOS | `~/Library/Application Support/radicle/config.json` |
-| Windows | `%LOCALAPPDATA%/radicle/config.json` |
+| Linux | `~/.local/share/peergit/config.json` |
+| macOS | `~/Library/Application Support/peergit/config.json` |
+| Windows | `%LOCALAPPDATA%/peergit/config.json` |
 
-Override with `RAD_HOME`:
+Override with `PEERGIT_HOME`:
 
 ```bash
-export RAD_HOME=/path/to/custom/home
+export PEERGIT_HOME=/path/to/custom/home
 ```
 
 ---
@@ -23,7 +23,7 @@ export RAD_HOME=/path/to/custom/home
 ## Viewing Configuration
 
 ```bash
-rad config show
+peergit config show
 ```
 
 This displays the full configuration as formatted JSON.
@@ -36,83 +36,57 @@ This displays the full configuration as formatted JSON.
 
 ```json
 {
-  "public_explorer": "https://app.radicle.example.com/nodes/$host/$rid$path",
-  "preferred_seeds": [...],
   "node": { ... },
-  "cli": { ... }
+  "p2p": { ... },
+  "fossil": { ... }
 }
 ```
-
-### Public Explorer
-
-URL template for browsing repositories on the web:
-
-```json
-{
-  "public_explorer": "https://app.radicle.example.com/nodes/$host/$rid$path"
-}
-```
-
-| Variable | Description |
-|----------|-------------|
-| `$host` | Node hostname |
-| `$rid` | Repository ID |
-| `$path` | Repository path |
-
-### Preferred Seeds
-
-List of seed node addresses for network connectivity:
-
-```json
-{
-  "preferred_seeds": [
-    "z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSoJyPwwnknocNYPm7@iris.radicle.network:8776",
-    "z6Mkmqogy2qEM2ummccUthFEaaHvyYmYBYh3dbe9W4ebScxo@rosa.radicle.network:8776"
-  ]
-}
-```
-
-Each entry follows the format: `<node_id>@<address>:<port>`
 
 ### Node Configuration
 
 ```json
 {
   "node": {
-    "alias": "radicle-peer",
-    "listen": ["127.0.0.1:8776"],
-    "peers_type": "dynamic",
-    "connect": [],
-    "external_addresses": [],
-    "network": "main",
-    "log": "INFO"
+    "alias": "fossil-p2p-node"
   }
 }
 ```
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `alias` | string | `"radicle-peer"` | Human-readable node name |
-| `listen` | array | `["127.0.0.1:8776"]` | Socket addresses to listen on |
-| `peers_type` | string | `"dynamic"` | Peer management mode (`static` or `dynamic`) |
-| `connect` | array | `[]` | Persistent peer connections |
-| `external_addresses` | array | `[]` | Public addresses advertised to other nodes |
-| `network` | string | `"main"` | Network identifier (`main` or `test`) |
-| `log` | string | `"INFO"` | Log level (`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`) |
+| `alias` | string | `"fossil-p2p-node"` | Human-readable node name |
 
-### CLI Configuration
+### P2P Configuration
 
 ```json
 {
-  "cli": {
-    "hints": true
+  "p2p": {
+    "listen": ["/ip4/0.0.0.0/tcp/0"],
+    "kad_protocol": "/peergit/kad/1.0"
   }
 }
 ```
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `hints` | boolean | `true` | Show helpful hints in CLI output |
+| `listen` | array | `["/ip4/0.0.0.0/tcp/0"]` | Multiaddresses to listen on (port 0 = random) |
+| `kad_protocol` | string | `"/peergit/kad/1.0"` | Kademlia protocol name |
+
+### Fossil Configuration
+
+```json
+{
+  "fossil": {
+    "fossil_path": "fossil",
+    "web_port": 3000
+  }
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `fossil_path` | string | `"fossil"` | Path to Fossil binary |
+| `web_port` | integer | `3000` | Web dashboard port |
 
 ---
 
@@ -120,29 +94,85 @@ Each entry follows the format: `<node_id>@<address>:<port>`
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `RAD_HOME` | Override home directory | Platform-specific |
+| `PEERGIT_HOME` | Override home directory | Platform-specific |
 | `RUST_LOG` | Log level filter | `warn` |
 
 ---
 
 ## Modifying Configuration
 
-Currently, configuration is managed by editing the JSON file directly. Use `rad config show` to view the current configuration, then edit the file with your preferred editor.
+Use the `peergit config` commands:
+
+```bash
+# Set a value
+peergit config set node.alias "alice-node"
+peergit config set fossil.web_port 8080
+peergit config set p2p.listen '["/ip4/0.0.0.0/tcp/4001"]'
+
+# Get a value
+peergit config get node.alias
+
+# Show full config
+peergit config show
+```
 
 !!! warning "Backup Your Configuration"
-    Before editing, make a backup of your configuration file:
+    Before editing manually, make a backup:
 
     ```bash
-    cp ~/.local/share/radicle/config.json ~/.local/share/radicle/config.json.bak
+    cp ~/.local/share/peergit/config.json ~/.local/share/peergit/config.json.bak
     ```
 
 ---
 
-## Default Seed Nodes
+## Listening Addresses
 
-Rad ships with two default seed nodes for the main network:
+PeerGit uses libp2p multiaddresses for listening:
 
-| Alias | Node ID | Address |
-|-------|---------|---------|
-| Iris | `z6MkrLMMsiPWUcNPHcRajuMi9mDfYckSoJyPwwnknocNYPm7` | `iris.radicle.network:8776` |
-| Rosa | `z6Mkmqogy2qEM2ummccUthFEaaHvyYmYBYh3dbe9W4ebScxo` | `rosa.radicle.network:8776` |
+```
+# Listen on all interfaces, random port
+/ip4/0.0.0.0/tcp/0
+
+# Listen on specific port
+/ip4/0.0.0.0/tcp/4001
+
+# Listen on localhost only
+/ip4/127.0.0.1/tcp/4001
+
+# IPv6
+/ip6/::1/tcp/4001
+```
+
+---
+
+## Web Dashboard Port
+
+The web dashboard runs on the port configured in `fossil.web_port`:
+
+```bash
+# Change from default 3000 to 8080
+peergit config set fossil.web_port 8080
+
+# Restart to apply
+peergit node start
+# Dashboard now at http://localhost:8080
+```
+
+---
+
+## Database
+
+PeerGit stores all state in a SQLite database at:
+
+- **Linux**: `~/.local/share/peergit/peergit.db`
+- **macOS**: `~/Library/Application Support/peergit/peergit.db`
+- **Windows**: `%LOCALAPPDATA%\peergit\peergit.db`
+
+The database contains:
+
+| Table | Purpose |
+|-------|---------|
+| `identity` | Node DID, public key, key file path |
+| `repositories` | RID, name, path, advertised status |
+| `known_peers` | Public key, alias, addresses, added timestamp |
+| `advertised_repos` | Repos shared with the P2P network |
