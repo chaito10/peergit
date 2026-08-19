@@ -20,6 +20,18 @@ PeerGit makes existing Fossil repositories directly discoverable and synchroniza
 
 ## Install
 
+### Pre-built Binaries
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/chaito10/peergit/releases):
+
+| Platform | Archive |
+|----------|---------|
+| Windows x64 | `peergit-v0.1.0-x86_64-pc-windows-msvc.zip` |
+| Linux x64 | `peergit-v0.1.0-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux ARM64 | `peergit-v0.1.0-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS x64 | `peergit-v0.1.0-x86_64-apple-darwin.tar.gz` |
+| macOS ARM64 (M1/M2) | `peergit-v0.1.0-aarch64-apple-darwin.tar.gz` |
+
 ### Scoop (Windows)
 
 ```bash
@@ -133,6 +145,19 @@ PeerGit stores configuration in:
 - **Windows**: `%LOCALAPPDATA%/peergit/config.json`
 
 Override with `PEERGIT_HOME=/path/to/home`.
+
+---
+
+## Examples
+
+See the [examples/](examples/) folder for detailed step-by-step guides:
+
+- [Basic Setup](examples/basic-setup.md) -- Initialize, configure, start
+- [Peer Discovery](examples/peer-discovery.md) -- Add peers, verify connectivity
+- [Fossil Sync](examples/fossil-sync.md) -- Clone, sync, push over libp2p
+- [Web Dashboard](examples/web-dashboard.md) -- Monitor nodes and repos
+- [Multi-Node](examples/multi-node.md) -- 3-node network on one machine
+- [Transport Command](examples/transport-command.md) -- Use as Fossil's transport
 
 ---
 

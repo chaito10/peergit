@@ -17,3 +17,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Configuration via JSON with XDG directory support
 - Fossil CLI passthrough
 - Full test suite (11 tests)
+- Pre-built binaries for Windows x64, Linux x64, Linux ARM64, macOS x64, macOS ARM64
+- GitHub Actions CI for multi-platform release builds
+- Examples folder with detailed step-by-step guides (basic setup, peer discovery, fossil sync, web dashboard, multi-node, transport command)
