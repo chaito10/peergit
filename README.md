@@ -175,6 +175,12 @@ The release binary is located at `target/release/peergit`.
 
 ---
 
+## Merged repos
+
+- **`forge`** (decentralized Fossil forge in Lua) was merged into this repo on
+  23 Sep 2026. Its content lives under [`_archive/forge/`](_archive/forge/),
+  history preserved via `git subtree add --squash`.
+
 ## License
 
 PeerGit is distributed under the PeerGit Non-Commercial License v1.0.
