@@ -84,6 +84,10 @@ async fn handle_connection(
             let json = api::list_repos(&state)?;
             ("200 OK", "application/json", json.into_bytes())
         }
+        ("GET", "/api/advertised") => {
+            let json = api::advertised_repos(&state)?;
+            ("200 OK", "application/json", json.into_bytes())
+        }
         ("POST", "/api/peers") => {
             let mut body_buf = vec![0u8; content_len];
             if content_len > 0 && content_len < 1_048_576 {

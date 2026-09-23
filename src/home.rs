@@ -42,17 +42,33 @@ impl Home {
     }
 
     pub fn secret_key_path(&self) -> PathBuf {
-        self.keys().join("fossil-p2p")
+        self.keys().join("identity.key")
     }
 
     pub fn public_key_path(&self) -> PathBuf {
-        self.keys().join("fossil-p2p.pub")
+        self.keys().join("identity.pub")
     }
 
     pub fn init(&self) -> Result<()> {
         fs::create_dir_all(self.storage())?;
         fs::create_dir_all(self.keys())?;
         fs::create_dir_all(self.path.join("repos"))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(self.keys(), fs::Permissions::from_mode(0o700));
+        }
+        Ok(())
+    }
+
+    pub fn write_secret_key(&self, hex_bytes: &str) -> Result<()> {
+        fs::create_dir_all(self.keys())?;
+        fs::write(self.secret_key_path(), hex_bytes)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(self.secret_key_path(), fs::Permissions::from_mode(0o600))?;
+        }
         Ok(())
     }
 }
@@ -79,6 +95,7 @@ mod tests {
         assert!(home.config().to_string_lossy().contains("config.json"));
         assert!(home.db().to_string_lossy().contains("node.db"));
         assert!(home.keys().to_string_lossy().contains("keys"));
+        assert!(home.secret_key_path().to_string_lossy().contains("identity.key"));
         let _ = fs::remove_dir_all(&tmp);
     }
 }

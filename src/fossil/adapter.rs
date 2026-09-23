@@ -1,6 +1,6 @@
 use crate::config::FossilConfig;
 use crate::error::{FossilP2pError, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, Clone)]
@@ -24,6 +24,7 @@ impl FossilCli {
     fn run_fossil(&self, args: &[&str], cwd: Option<&Path>) -> Result<String> {
         let mut cmd = Command::new(&self.fossil_path);
         cmd.args(args);
+        cmd.stdin(std::process::Stdio::null());
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
         }
@@ -43,15 +44,26 @@ impl FossilCli {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 
-    pub fn init(&self, path: &Path, name: &str) -> Result<()> {
-        self.run_fossil(&["init", &format!("{}", path.display())], None)?;
-        if !name.is_empty() {
-            self.run_fossil(
-                &["settings", "project-name", name],
-                Some(path),
-            )?;
+    pub fn init(&self, dir: &Path, name: &str) -> Result<PathBuf> {
+        std::fs::create_dir_all(dir)?;
+        let fossil_file = fossil_file_path(dir, name);
+        let file_str = fossil_file.display().to_string();
+
+        if name.is_empty() {
+            self.run_fossil(&["init", &file_str], None)?;
+        } else {
+            self.run_fossil(&["init", "--project-name", name, &file_str], None)?;
         }
-        Ok(())
+
+        let _ = self.run_fossil(
+            &["settings", "ignore-glob", "*.fossil", "-R", &file_str],
+            None,
+        );
+        self.run_fossil(
+            &["open", &file_str, "--workdir", &dir.display().to_string()],
+            None,
+        )?;
+        Ok(fossil_file)
     }
 
     pub fn open(&self, repo_path: &Path) -> Result<()> {
@@ -76,7 +88,7 @@ impl FossilCli {
     }
 
     pub fn commit(&self, repo_path: &Path, message: &str, all: bool) -> Result<String> {
-        let mut args = vec!["commit", "-m", message];
+        let mut args = vec!["commit", "-m", message, "--no-warnings"];
         if all {
             args.push("--all");
         }
@@ -99,18 +111,25 @@ impl FossilCli {
 
     pub fn clone(&self, url: &str, dest: &Path) -> Result<()> {
         self.run_fossil(
-            &["clone", url, &format!("{}", dest.display())],
+            &[
+                "clone",
+                "--transport-command",
+                &transport_command(),
+                url,
+                &format!("{}", dest.display()),
+            ],
             None,
         )?;
         Ok(())
     }
 
-    pub fn sync(&self, repo_path: &Path, transport_cmd: Option<&str>) -> Result<String> {
-        if let Some(_cmd) = transport_cmd {
-            self.run_fossil(&["sync", "--transport-command", _cmd], Some(repo_path))
-        } else {
-            self.run_fossil(&["sync"], Some(repo_path))
+    pub fn sync(&self, repo_path: &Path, url: Option<&str>) -> Result<String> {
+        let transport = transport_command();
+        let mut args = vec!["sync", "--transport-command", transport.as_str()];
+        if let Some(u) = url {
+            args.push(u);
         }
+        self.run_fossil(&args, Some(repo_path))
     }
 
     pub fn serve(&self, repo_path: &Path, port: u16) -> Result<()> {
@@ -149,6 +168,54 @@ impl FossilCli {
             Some(repo_path),
         )
     }
+}
+
+/// Command string Fossil should use for `--transport-command`.
+///
+/// Prefers the absolute path of the currently running binary so the transport
+/// works even when `peergit` is not on `PATH`.
+pub fn transport_command() -> String {
+    match std::env::current_exe() {
+        Ok(path) => format!("\"{}\" transport", path.display()),
+        Err(_) => "peergit transport".to_string(),
+    }
+}
+
+/// Derive a filesystem-safe Fossil repository file name from a project name.
+pub fn fossil_file_name(name: &str) -> String {
+    let sanitized: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let trimmed = sanitized.trim_matches('-');
+    if trimmed.is_empty() {
+        "repository".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+/// Path to the `.fossil` repository file for a given repository directory.
+pub fn fossil_file_path(dir: &Path, name: &str) -> PathBuf {
+    dir.join(format!("{}.fossil", fossil_file_name(name)))
+}
+
+/// Locate the `.fossil` repository file inside a checkout directory, if present.
+pub fn find_fossil_file(dir: &Path) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() && path.extension().map(|e| e == "fossil").unwrap_or(false) {
+            return Some(path);
+        }
+    }
+    None
 }
 
 #[cfg(test)]

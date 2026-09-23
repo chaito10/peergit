@@ -1,10 +1,11 @@
 use crate::error::{FossilP2pError, Result};
 use ed25519_dalek::{Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
-#[derive(Clone)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Keypair {
-    signing: SigningKey,
+    secret: [u8; 32],
     verifying: [u8; 32],
 }
 
@@ -12,14 +13,22 @@ impl Keypair {
     pub fn generate() -> Self {
         let mut csprng = rand_core::OsRng;
         let signing = SigningKey::generate(&mut csprng);
+        let secret = signing.to_bytes();
         let verifying = signing.verifying_key().to_bytes();
-        Self { signing, verifying }
+        Self { secret, verifying }
     }
 
     pub fn from_bytes(secret: &[u8; 32]) -> Result<Self> {
         let signing = SigningKey::from_bytes(secret);
         let verifying = signing.verifying_key().to_bytes();
-        Ok(Self { signing, verifying })
+        Ok(Self {
+            secret: *secret,
+            verifying,
+        })
+    }
+
+    fn signing_key(&self) -> SigningKey {
+        SigningKey::from_bytes(&self.secret)
     }
 
     pub fn public_key(&self) -> PublicKey {
@@ -27,17 +36,33 @@ impl Keypair {
     }
 
     pub fn secret_bytes(&self) -> [u8; 32] {
-        self.signing.to_bytes()
+        self.secret
     }
 
     pub fn sign(&self, msg: &[u8]) -> Signature {
-        Signature(self.signing.sign(msg).to_bytes())
+        Signature(self.signing_key().sign(msg).to_bytes())
     }
 
     pub fn to_libp2p_keypair(&self) -> Result<libp2p::identity::Keypair> {
-        libp2p::identity::Keypair::ed25519_from_bytes(self.signing.to_bytes())
+        libp2p::identity::Keypair::ed25519_from_bytes(self.secret)
             .map_err(|e| FossilP2pError::Crypto(format!("libp2p key conversion: {e}")))
     }
+}
+
+pub fn random_bytes(len: usize) -> Vec<u8> {
+    let mut bytes = vec![0u8; len];
+    rand_core::RngCore::fill_bytes(&mut rand_core::OsRng, &mut bytes);
+    bytes
+}
+
+pub fn sha256(data: &[u8]) -> [u8; 32] {
+    use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(data);
+    let hash = hasher.finalize();
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&hash);
+    out
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -55,8 +80,7 @@ impl PublicKey {
     }
 
     pub fn verifying_key(&self) -> Result<VerifyingKey> {
-        VerifyingKey::from_bytes(&self.0)
-            .map_err(|e| FossilP2pError::Crypto(format!("{e}")))
+        VerifyingKey::from_bytes(&self.0).map_err(|e| FossilP2pError::Crypto(format!("{e}")))
     }
 
     pub fn verify(&self, msg: &[u8], sig: &Signature) -> bool {
@@ -94,9 +118,9 @@ impl PublicKey {
     }
 
     pub fn to_libp2p_peer_id(&self) -> libp2p::PeerId {
-        let keypair = libp2p::identity::Keypair::ed25519_from_bytes(self.0)
-            .expect("valid ed25519 key");
-        keypair.public().to_peer_id()
+        let ed = libp2p::identity::ed25519::PublicKey::try_from_bytes(&self.0)
+            .expect("valid ed25519 public key");
+        libp2p::identity::PublicKey::from(ed).to_peer_id()
     }
 
     pub fn to_hex(&self) -> String {
@@ -211,6 +235,23 @@ mod tests {
     fn libp2p_peer_id_conversion() {
         let kp = Keypair::generate();
         let pk = kp.public_key();
-        let _peer_id = pk.to_libp2p_peer_id();
+        let peer_id = pk.to_libp2p_peer_id();
+        let keypair_peer_id = kp.to_libp2p_keypair().unwrap().public().to_peer_id();
+        assert_eq!(peer_id, keypair_peer_id);
+    }
+
+    #[test]
+    fn sha256_known_vector() {
+        let digest = sha256(b"hello");
+        let expected = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        assert_eq!(hex::encode(digest), expected);
+    }
+
+    #[test]
+    fn random_bytes_len() {
+        assert_eq!(random_bytes(16).len(), 16);
+        let a = random_bytes(16);
+        let b = random_bytes(16);
+        assert_ne!(a, b);
     }
 }

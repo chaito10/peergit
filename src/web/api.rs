@@ -1,23 +1,20 @@
 use crate::crypto::PublicKey;
-use crate::home::Home;
 use crate::storage::Database;
 use crate::web::WebState;
 use std::path::Path;
 
-pub fn node_status(state: &WebState) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let keypair = load_keypair(&state.home)?;
+type WebResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+pub fn node_status(state: &WebState) -> WebResult<String> {
+    let keypair = crate::keystore::load_or_create_keypair(&state.home)?;
     let pk = keypair.public_key();
     let peer_id = pk.to_libp2p_peer_id().to_string();
 
-    let peer_count = Database::open(&state.home.db())
-        .ok()
-        .and_then(|db| db.list_peers().ok())
-        .map(|p| p.len())
-        .unwrap_or(0);
-
-    let repo_count = Database::open(&state.home.db())
-        .ok()
-        .and_then(|db| db.list_repositories().ok())
+    let db = Database::open(&state.home.db())?;
+    let peer_count = db.list_peers().map(|p| p.len()).unwrap_or(0);
+    let repo_count = db.list_repositories().map(|r| r.len()).unwrap_or(0);
+    let advertised = db
+        .list_advertised_repos(&peer_id)
         .map(|r| r.len())
         .unwrap_or(0);
 
@@ -25,27 +22,32 @@ pub fn node_status(state: &WebState) -> Result<String, Box<dyn std::error::Error
         "alias": state.config.node.alias,
         "peer_id": peer_id,
         "public_key": pk.to_multibase(),
+        "did": pk.to_did_key(),
         "peer_count": peer_count,
         "repo_count": repo_count,
+        "advertised_count": advertised,
         "listen": state.config.p2p.listen.join(", "),
-        "web_port": state.config.fossil.http_port,
+        "web_port": state.config.fossil.web_port,
+        "protocol_version": crate::protocol::PROTOCOL_VERSION,
     });
 
     Ok(serde_json::to_string(&status)?)
 }
 
-pub fn list_peers(state: &WebState) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+pub fn list_peers(state: &WebState) -> WebResult<String> {
     let db = Database::open(&state.home.db())?;
     let peers = db.list_peers()?;
 
     let items: Vec<serde_json::Value> = peers
         .into_iter()
-        .map(|(peer_id, _pk, alias, addresses, last_seen)| {
+        .map(|p| {
             serde_json::json!({
-                "peer_id": peer_id,
-                "alias": alias,
-                "addresses": addresses,
-                "last_seen": last_seen,
+                "peer_id": p.peer_id,
+                "public_key": p.public_key,
+                "alias": p.alias,
+                "addresses": p.addresses,
+                "first_seen": p.first_seen,
+                "last_seen": p.last_seen,
             })
         })
         .collect();
@@ -53,18 +55,18 @@ pub fn list_peers(state: &WebState) -> Result<String, Box<dyn std::error::Error 
     Ok(serde_json::to_string(&items)?)
 }
 
-pub fn list_repos(state: &WebState) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+pub fn list_repos(state: &WebState) -> WebResult<String> {
     let db = Database::open(&state.home.db())?;
     let repos = db.list_repositories()?;
 
     let items: Vec<serde_json::Value> = repos
         .into_iter()
-        .map(|(rid, name, description, visibility)| {
+        .map(|r| {
             serde_json::json!({
-                "rid": rid,
-                "name": name,
-                "description": description,
-                "visibility": visibility,
+                "rid": r.rid,
+                "name": r.name,
+                "description": r.description,
+                "visibility": r.visibility.as_db_str(),
             })
         })
         .collect();
@@ -72,14 +74,9 @@ pub fn list_repos(state: &WebState) -> Result<String, Box<dyn std::error::Error 
     Ok(serde_json::to_string(&items)?)
 }
 
-pub fn add_peer(
-    state: &WebState,
-    body: &[u8],
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+pub fn add_peer(state: &WebState, body: &[u8]) -> WebResult<String> {
     let v: serde_json::Value = serde_json::from_slice(body)?;
-    let pk_str = v["public_key"]
-        .as_str()
-        .ok_or("public_key required")?;
+    let pk_str = v["public_key"].as_str().ok_or("public_key required")?;
     let alias = v["alias"].as_str();
 
     let pk = PublicKey::from_multibase(pk_str)?;
@@ -91,9 +88,7 @@ pub fn add_peer(
     Ok(serde_json::json!({"ok": true, "peer_id": peer_id}).to_string())
 }
 
-pub fn trigger_sync(
-    state: &WebState,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+pub fn trigger_sync(state: &WebState) -> WebResult<String> {
     let db = Database::open(&state.home.db())?;
     let repos = db.list_repositories()?;
 
@@ -104,25 +99,33 @@ pub fn trigger_sync(
     let fossil = crate::fossil::FossilCli::new(&state.config.fossil);
     let mut results = Vec::new();
 
-    for (rid, name, _desc, _vis) in &repos {
-        let (_name, _desc, path, _owner, _vis, _fossil_db) =
-            db.load_repository(rid)?.unwrap_or_default();
+    for summary in &repos {
+        let record = match db.load_repository(&summary.rid)? {
+            Some(r) => r,
+            None => continue,
+        };
 
-        let repo_path = Path::new(&path);
-        if repo_path.exists() {
-            match fossil.sync(repo_path, None) {
-                Ok(output) => {
-                    results.push(serde_json::json!({
-                        "rid": rid, "name": name, "ok": true,
-                        "output": output.trim()
-                    }));
-                }
-                Err(e) => {
-                    results.push(serde_json::json!({
-                        "rid": rid, "name": name, "ok": false,
-                        "error": e.to_string()
-                    }));
-                }
+        let repo_path = Path::new(&record.path);
+        if !repo_path.exists() {
+            results.push(serde_json::json!({
+                "rid": summary.rid, "name": summary.name, "ok": false,
+                "error": "repository path missing"
+            }));
+            continue;
+        }
+
+        match fossil.sync(repo_path, None) {
+            Ok(output) => {
+                results.push(serde_json::json!({
+                    "rid": summary.rid, "name": summary.name, "ok": true,
+                    "output": output.trim()
+                }));
+            }
+            Err(e) => {
+                results.push(serde_json::json!({
+                    "rid": summary.rid, "name": summary.name, "ok": false,
+                    "error": e.to_string()
+                }));
             }
         }
     }
@@ -130,11 +133,21 @@ pub fn trigger_sync(
     Ok(serde_json::json!({"ok": true, "results": results}).to_string())
 }
 
-fn load_keypair(home: &Home) -> Result<crate::crypto::Keypair, Box<dyn std::error::Error + Send + Sync>> {
-    let sk_path = home.secret_key_path();
-    let sk_hex = std::fs::read_to_string(&sk_path)
-        .map_err(|e| format!("cannot read key at {}: {e}", sk_path.display()))?;
-    let sk_bytes = hex::decode(sk_hex.trim())?;
-    let sk_arr: [u8; 32] = sk_bytes.try_into().map_err(|_| "invalid key length")?;
-    Ok(crate::crypto::Keypair::from_bytes(&sk_arr)?)
+pub fn advertised_repos(state: &WebState) -> WebResult<String> {
+    let keypair = crate::keystore::load_or_create_keypair(&state.home)?;
+    let peer_id = keypair.public_key().to_libp2p_peer_id().to_string();
+    let db = Database::open(&state.home.db())?;
+    let ads = db.list_advertised_repos(&peer_id)?;
+    let items: Vec<serde_json::Value> = ads
+        .into_iter()
+        .map(|a| {
+            serde_json::json!({
+                "rid": a.rid,
+                "peer_id": a.peer_id,
+                "announced_at": a.announced_at,
+                "has_advertisement": a.advertisement_json.is_some(),
+            })
+        })
+        .collect();
+    Ok(serde_json::to_string(&items)?)
 }

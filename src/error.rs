@@ -1,54 +1,33 @@
-use std::fmt;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum FossilP2pError {
+    #[error("fossil error: {0}")]
     Fossil(String),
+    #[error("identity error: {0}")]
     Identity(String),
+    #[error("storage error: {0}")]
     Storage(String),
+    #[error("p2p error: {0}")]
     P2p(String),
+    #[error("config error: {0}")]
     Config(String),
+    #[error("repository error: {0}")]
     Repository(String),
-    Io(std::io::Error),
-    Sqlite(rusqlite::Error),
-    Serde(serde_json::Error),
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("database error: {0}")]
+    Sqlite(#[from] rusqlite::Error),
+    #[error("serialization error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("crypto error: {0}")]
     Crypto(String),
-}
-
-impl fmt::Display for FossilP2pError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Fossil(msg) => write!(f, "fossil error: {msg}"),
-            Self::Identity(msg) => write!(f, "identity error: {msg}"),
-            Self::Storage(msg) => write!(f, "storage error: {msg}"),
-            Self::P2p(msg) => write!(f, "p2p error: {msg}"),
-            Self::Config(msg) => write!(f, "config error: {msg}"),
-            Self::Repository(msg) => write!(f, "repository error: {msg}"),
-            Self::Io(err) => write!(f, "io error: {err}"),
-            Self::Sqlite(err) => write!(f, "database error: {err}"),
-            Self::Serde(err) => write!(f, "serialization error: {err}"),
-            Self::Crypto(msg) => write!(f, "crypto error: {msg}"),
-        }
-    }
-}
-
-impl std::error::Error for FossilP2pError {}
-
-impl From<std::io::Error> for FossilP2pError {
-    fn from(e: std::io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
-impl From<rusqlite::Error> for FossilP2pError {
-    fn from(e: rusqlite::Error) -> Self {
-        Self::Sqlite(e)
-    }
-}
-
-impl From<serde_json::Error> for FossilP2pError {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Serde(e)
-    }
+    #[error("protocol error: {0}")]
+    Protocol(String),
+    #[error("authorization error: {0}")]
+    Authorization(String),
+    #[error("network error: {0}")]
+    Network(String),
 }
 
 impl From<String> for FossilP2pError {

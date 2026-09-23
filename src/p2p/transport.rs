@@ -19,6 +19,7 @@ pub fn build_swarm(
             yamux::Config::default,
         )
         .map_err(|e| crate::error::FossilP2pError::P2p(format!("tcp setup: {e}")))?
+        .with_quic()
         .with_behaviour(|key| {
             let peer_id = key.public().to_peer_id();
             Ok(FossilP2pBehaviour::new(peer_id, key, &kad_protocol))
@@ -32,6 +33,40 @@ pub fn build_swarm(
             if let Err(e) = swarm.listen_on(addr) {
                 eprintln!("Warning: failed to listen on {addr_str}: {e}");
             }
+        }
+    }
+
+    Ok(swarm)
+}
+
+/// Build a lightweight swarm for one-shot transfers (no web UI, no long-lived DHT).
+pub fn build_oneshot_swarm(
+    config: &P2pConfig,
+    keypair: &libp2p::identity::Keypair,
+) -> Result<Swarm<FossilP2pBehaviour>> {
+    let kad_protocol = config.kad_protocol.clone();
+    let idle_timeout = Duration::from_secs(config.idle_timeout_secs);
+
+    let mut swarm = SwarmBuilder::with_existing_identity(keypair.clone())
+        .with_tokio()
+        .with_tcp(
+            tcp::Config::default(),
+            noise::Config::new,
+            yamux::Config::default,
+        )
+        .map_err(|e| crate::error::FossilP2pError::P2p(format!("tcp setup: {e}")))?
+        .with_quic()
+        .with_behaviour(|key| {
+            let peer_id = key.public().to_peer_id();
+            Ok(FossilP2pBehaviour::new(peer_id, key, &kad_protocol))
+        })
+        .map_err(|e| crate::error::FossilP2pError::P2p(format!("behaviour setup: {e}")))?
+        .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(idle_timeout))
+        .build();
+
+    if let Some(addr_str) = config.listen.first() {
+        if let Ok(addr) = addr_str.parse() {
+            let _ = swarm.listen_on(addr);
         }
     }
 

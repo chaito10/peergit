@@ -34,7 +34,7 @@ impl FossilP2pBehaviour {
                 request_response::ProtocolSupport::Full,
             )),
             request_response::Config::default()
-                .with_request_timeout(std::time::Duration::from_secs(60)),
+                .with_request_timeout(std::time::Duration::from_secs(300)),
         );
 
         Self {
